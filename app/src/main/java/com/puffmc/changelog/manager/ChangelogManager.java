@@ -245,13 +245,14 @@ public class ChangelogManager {
 
     /**
      * Gets the display number for a changelog entry (e.g., #1, #2, #3)
+     * Oldest entry = #1, newest entry = highest number
      * @param entry The changelog entry
      * @return The display number string (e.g., "#1")
      */
     public String getEntryDisplayNumber(ChangelogEntry entry) {
         List<ChangelogEntry> activeEntries = entries.stream()
                 .filter(e -> !e.isDeleted())
-                .sorted((e1, e2) -> Long.compare(e2.getTimestamp(), e1.getTimestamp()))
+                .sorted((e1, e2) -> Long.compare(e1.getTimestamp(), e2.getTimestamp()))
                 .toList();
         
         int index = activeEntries.indexOf(entry);

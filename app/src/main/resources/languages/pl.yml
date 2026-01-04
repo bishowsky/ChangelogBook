@@ -1,16 +1,16 @@
 # ChangelogBook - Polski plik językowy
 
 commands:
-  help: "§6/changelogbook §7- Wyświetl dziennik zmian serwera"
-  help_admin: "§6/changelogbook admin §7- Otwórz panel administracyjny"
-  usage: "§cUżycie: /changelogbook [admin]"
-  reload: "§6/changelogbook reload §7- Przeładuj konfigurację"
+  help: "§6/changelog §7- Wyświetl pomoc i komendy dziennika zmian"
+  help_admin: "§6/changelog admin §7- Otwórz panel administracyjny"
+  usage: "§cUżycie: /changelog [admin]"
+  reload: "§6/changelog reload §7- Przeładuj konfigurację"
   reload_success: "§aKonfiguracja pomyślnie przeładowana"
   reload_permission: "§cNie masz uprawnień do przeładowania konfiguracji"
-  add_usage: "§cUżycie: /changelogbook add <treść>"
-  edit_usage: "§cUżycie: /changelogbook edit <id> <treść>"
-  delete_usage: "§cUżycie: /changelogbook delete <id>"
-  give_usage: "§cUżycie: /changelogbook give <gracz> <typNagrody>"
+  add_usage: "§cUżycie: /changelog add <treść>"
+  edit_usage: "§cUżycie: /changelog edit <id> <treść>"
+  delete_usage: "§cUżycie: /changelog delete <id>"
+  give_usage: "§cUżycie: /changelog give <gracz> <typNagrody>"
 
 messages:
   success: "§a✓ Operacja pomyślna"
@@ -40,7 +40,7 @@ rewards:
   claim_success: "§6Odebrałeś nagrodę: %reward%"
   already_claimed: "§cJuż odebrałeś tę nagrodę"
   not_available: "§cTa nagroda nie jest już dostępna"
-  claim_notice: "§eMasz nieodebrane nagrody! Wpisz §6/changelogbook rewards §eaby je odebrać"
+  claim_notice: "§eMasz nieodebrane nagrody! Wpisz §6/changelog rewards §eaby je odebrać"
   broadcast: "§e%player% §6odebrał §e%reward% §6za czytanie dziennika zmian!"
 
 errors:
@@ -49,6 +49,6 @@ errors:
   player_not_found: "§cGracz §e%player% §cnie znaleziony"
   database_error: "§cBłąd bazy danych. Spróbuj ponownie później"
   config_error: "§cBłąd konfiguracji"
-  invalid_syntax: "§cNieprawidłowa składnia. Wpisz §6/changelogbook help §caby uzyskać więcej informacji"
+  invalid_syntax: "§cNieprawidłowa składnia. Wpisz §6/changelog help §caby uzyskać więcej informacji"
   entry_not_found: "§cWpis w dzienniku zmian nie znaleziony (ID: %id%)"
   cooldown_active: "§cMusisz czekać §e%hours% §cgodzin przed odebraniem kolejnej nagrody"

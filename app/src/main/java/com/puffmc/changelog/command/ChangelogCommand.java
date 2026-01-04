@@ -304,7 +304,7 @@ public class ChangelogCommand implements CommandExecutor {
             plugin.setDebugMode(false);
             sender.sendMessage(ChatColor.GREEN + "Debug mode disabled");
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /changelogbook debug <on|off>");
+            sender.sendMessage(ChatColor.RED + "Usage: /changelog debug <on|off>");
         }
 
         return true;

@@ -17,7 +17,7 @@ A Minecraft plugin for Paper 1.21.3 that allows server administrators to manage 
 
 | Command | Description | Permission |
 |---------|-------------|------------|
-| `/changelog` | View the changelog book | `changelogbook.use` |
+| `/changelog` | Display changelog help | `changelogbook.use` |
 | `/changelog add <content>` | Add a new changelog entry | `changelogbook.admin` |
 | `/changelog edit <id> <content>` | Edit an existing entry | `changelogbook.admin` |
 | `/changelog delete <id>` | Delete a changelog entry | `changelogbook.admin` |

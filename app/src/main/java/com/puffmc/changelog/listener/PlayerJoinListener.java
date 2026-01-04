@@ -50,7 +50,7 @@ public class PlayerJoinListener implements Listener {
                         
                         // Clickable message
                         TextComponent clickableMessage = new TextComponent(
-                                ChatColor.GOLD + "/changelogbook " +
+                                ChatColor.GOLD + "/changelog " +
                                 ChatColor.GRAY + "- " +
                                 ChatColor.GOLD + messageManager.getMessage("messages.click_to_view"));
                         
@@ -60,7 +60,7 @@ public class PlayerJoinListener implements Listener {
                         
                         clickableMessage.setClickEvent(new ClickEvent(
                                 ClickEvent.Action.RUN_COMMAND, 
-                                "/changelogbook"));
+                                "/changelog"));
                         
                         player.spigot().sendMessage(clickableMessage);
                     }

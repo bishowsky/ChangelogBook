@@ -26,10 +26,10 @@ public class MessageManager {
 
     private void loadDefaultMessages() {
         // English default fallback
-        defaultMessages.put("commands.help", "§6/changelogbook §7- Display the server changelog");
-        defaultMessages.put("commands.help_admin", "§6/changelogbook admin §7- Open administration panel");
-        defaultMessages.put("commands.usage", "§cUsage: /changelogbook [admin]");
-        defaultMessages.put("commands.reload", "§6/changelogbook reload §7- Reload configuration");
+        defaultMessages.put("commands.help", "§6/changelog §7- Display changelog help and commands");
+        defaultMessages.put("commands.help_admin", "§6/changelog admin §7- Open administration panel");
+        defaultMessages.put("commands.usage", "§cUsage: /changelog [admin]");
+        defaultMessages.put("commands.reload", "§6/changelog reload §7- Reload configuration");
         defaultMessages.put("commands.reload_success", "§aConfiguration reloaded successfully");
         defaultMessages.put("commands.reload_permission", "§cYou don't have permission to reload the configuration");
         defaultMessages.put("messages.success", "§a✓ Operation successful");

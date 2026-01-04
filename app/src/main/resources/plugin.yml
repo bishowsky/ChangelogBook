@@ -6,7 +6,7 @@ authors: [Bishyy]
 description: Plugin displaying changelog to players with multi-language support
 commands:
   changelog:
-    description: Display and manage changelog
+    description: Display changelog help and commands
     usage: /changelog
     aliases: [cl]
     permission: changelogbook.use

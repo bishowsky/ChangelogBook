@@ -1,16 +1,16 @@
 # ChangelogBook - English Language File
 
 commands:
-  help: "§6/changelogbook §7- Display the server changelog"
-  help_admin: "§6/changelogbook admin §7- Open administration panel"
-  usage: "§cUsage: /changelogbook [admin]"
-  reload: "§6/changelogbook reload §7- Reload configuration"
+  help: "§6/changelog §7- Display changelog help and commands"
+  help_admin: "§6/changelog admin §7- Open administration panel"
+  usage: "§cUsage: /changelog [admin]"
+  reload: "§6/changelog reload §7- Reload configuration"
   reload_success: "§aConfiguration reloaded successfully"
   reload_permission: "§cYou don't have permission to reload the configuration"
-  add_usage: "§cUsage: /changelogbook add <content>"
-  edit_usage: "§cUsage: /changelogbook edit <id> <content>"
-  delete_usage: "§cUsage: /changelogbook delete <id>"
-  give_usage: "§cUsage: /changelogbook give <player> <rewardType>"
+  add_usage: "§cUsage: /changelog add <content>"
+  edit_usage: "§cUsage: /changelog edit <id> <content>"
+  delete_usage: "§cUsage: /changelog delete <id>"
+  give_usage: "§cUsage: /changelog give <player> <rewardType>"
 
 messages:
   success: "§a✓ Operation successful"
@@ -40,7 +40,7 @@ rewards:
   claim_success: "§6You claimed your reward: %reward%"
   already_claimed: "§cYou have already claimed this reward"
   not_available: "§cThis reward is not available anymore"
-  claim_notice: "§eYou have unclaimed rewards! Type §6/changelogbook rewards §eto claim them"
+  claim_notice: "§eYou have unclaimed rewards! Type §6/changelog rewards §eto claim them"
   broadcast: "§e%player% §6received §e%reward% §6for reading the changelog!"
 
 errors:
@@ -49,6 +49,6 @@ errors:
   player_not_found: "§cPlayer §e%player% §cnot found"
   database_error: "§cDatabase error occurred. Please try again later"
   config_error: "§cConfiguration error occurred"
-  invalid_syntax: "§cInvalid syntax. Type §6/changelogbook help §cfor more information"
+  invalid_syntax: "§cInvalid syntax. Type §6/changelog help §cfor more information"
   entry_not_found: "§cChangelog entry not found with ID: %id%"
   cooldown_active: "§cYou must wait §e%hours% §chours before claiming another reward"
