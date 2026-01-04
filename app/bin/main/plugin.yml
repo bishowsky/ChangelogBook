@@ -1,0 +1,15 @@
+name: TokPL-Changelog
+version: '1.0.0'
+main: pl.tokpl.changelog.ChangelogPlugin
+api-version: '1.21'
+authors: [TokPL]
+description: Plugin displaying changelog to players
+commands:
+  changelog:
+    description: Display changelog
+    usage: /changelog
+    aliases: [cl]
+permissions:
+  tokpl.changelog.admin:
+    description: Allows access to changelog administration
+    default: op

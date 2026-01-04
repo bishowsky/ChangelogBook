@@ -1,0 +1,19 @@
+name: ChangelogBook
+version: '1.0.0'
+main: com.puffmc.changelog.ChangelogPlugin
+api-version: '1.21'
+authors: [Bishyy]
+description: Plugin displaying changelog to players with multi-language support
+commands:
+  changelog:
+    description: Display and manage changelog
+    usage: /changelog
+    aliases: [cl]
+    permission: changelogbook.use
+permissions:
+  changelogbook.use:
+    description: Allows access to changelog
+    default: true
+  changelogbook.admin:
+    description: Allows access to changelog administration
+    default: op

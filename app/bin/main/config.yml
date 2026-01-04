@@ -1,0 +1,25 @@
+# TokPL-Changelog Configuration
+# Czas opóźnienia (w tickach) przed wyświetleniem powiadomienia po dołączeniu (60 = 3 sekundy)
+notification-delay: 60
+
+# MySQL Database Configuration
+mysql:
+  enabled: false
+  host: 127.0.0.1
+  port: 3306
+  database: minecraft
+  username: root
+  password: uzupelnij_swoje_haslo
+  table-prefix: tokpl_
+
+# Gold Coin Reward Configuration
+rewards:
+  gold-coin:
+    enabled: true
+    chance: 10 # Szansa (w procentach) na otrzymanie złotej monety
+    max-days: 3 # Maksymalny wiek wpisu (w dniach) do otrzymania nagrody
+    command: "oraxen give %player% zlota_moneta 1"
+    messages:
+      success: "&a&l✨ &aOtrzymałeś złotą monetę za czytanie changeloga! &7Sprawdzaj changelog regularnie, aby być na bieżąco."
+      broadcast: "&e&l✨ &f%player% &6otrzymał złotą monetę za bycie na bieżąco z changelogiem!"
+      broadcast-hover: "&eKliknij, aby otworzyć changelog"

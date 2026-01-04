@@ -1,0 +1,47 @@
+# ChangelogBook Configuration
+
+# Language: en (English) or pl (Polish)
+language: "en"
+
+# Delay time (in ticks) before showing the notification after joining (60 = 3 seconds)
+notification-delay: 60
+
+# MySQL Database Configuration
+mysql:
+  enabled: false
+  host: 127.0.0.1
+  port: 3306
+  database: minecraft
+  username: root
+  password: "change_me"
+  table-prefix: changelog_
+
+# Reward System Configuration
+rewards:
+  enabled: true
+  # Reward types - add as many as you want
+  types:
+    # Bronze reward - basic level
+    bronze:
+      enabled: true
+      chance: 20
+      cooldown-hours: 4
+      max-days: 7
+      command: "say %player% received bronze reward!"
+    # Silver reward - intermediate level
+    silver:
+      enabled: true
+      chance: 10
+      cooldown-hours: 8
+      max-days: 14
+      command: "say %player% received silver reward!"
+    # Gold reward - premium level
+    gold:
+      enabled: true
+      chance: 5
+      cooldown-hours: 12
+      max-days: 30
+      command: "say %player% received gold reward!"
+
+# Debug mode - set to true for verbose logging
+debug: false
