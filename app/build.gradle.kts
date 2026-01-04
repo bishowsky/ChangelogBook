@@ -33,8 +33,8 @@ dependencies {
     // HikariCP for database connection pooling
     implementation("com.zaxxer:HikariCP:5.1.0")
     
-    // Guava
-    implementation("com.google.guava:guava:33.3.1-jre")
+    // Guava - already included in Paper/Spigot
+    compileOnly("com.google.guava:guava:33.3.1-jre")
     
     // JUnit for testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
@@ -64,9 +64,11 @@ tasks {
         archiveVersion.set("")
         destinationDirectory.set(layout.buildDirectory.dir("libs"))
         
+        // Minimize JAR size
+        minimize()
+        
         relocate("com.mysql", "com.puffmc.changelog.libs.mysql")
         relocate("com.zaxxer.hikari", "com.puffmc.changelog.libs.hikari")
-        relocate("com.google.common", "com.puffmc.changelog.libs.guava")
     }
     
     test {
