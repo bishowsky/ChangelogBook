@@ -5,6 +5,7 @@ import com.puffmc.changelog.ChangelogPlugin;
 import com.puffmc.changelog.MessageManager;
 import com.puffmc.changelog.RewardManager;
 import com.puffmc.changelog.manager.ChangelogManager;
+import com.puffmc.changelog.util.ColorUtil;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -139,6 +140,9 @@ public class ChangelogCommand implements CommandExecutor {
         placeholders.put("number", changelogManager.getEntryDisplayNumber(entry));
         sender.sendMessage(messageManager.getMessage("messages.entry_added", placeholders));
         
+        // Log the action
+        plugin.getLogManager().info("Changelog entry added by " + authorName + ": " + entry.getId());
+        
         broadcastChangelogNotification();
         return true;
     }
@@ -205,6 +209,10 @@ public class ChangelogCommand implements CommandExecutor {
             Map<String, String> placeholders = new HashMap<>();
             placeholders.put("number", displayNumber);
             sender.sendMessage(messageManager.getMessage("messages.entry_deleted", placeholders));
+            
+            // Log the action
+            String actorName = (sender instanceof Player) ? ((Player) sender).getName() : sender.getName();
+            plugin.getLogManager().info("Changelog entry deleted by " + actorName + ": " + id);
         } else {
             Map<String, String> placeholders = new HashMap<>();
             placeholders.put("id", id);
@@ -232,7 +240,7 @@ public class ChangelogCommand implements CommandExecutor {
                 sender.sendMessage(ChatColor.GOLD + "#" + index + 
                                   ChatColor.WHITE + " | Author: " + entry.getAuthor() + 
                                   ChatColor.WHITE + " | Date: " + changelogManager.formatDate(entry.getTimestamp()));
-                sender.sendMessage(ChatColor.WHITE + "Content: " + entry.getContent());
+                sender.sendMessage(ChatColor.WHITE + "Content: " + ColorUtil.formatText(entry.getContent()));
                 sender.sendMessage(ChatColor.GRAY + "ID (for commands): " + entry.getId());
                 sender.sendMessage("");
                 index++;
@@ -394,7 +402,7 @@ public class ChangelogCommand implements CommandExecutor {
             page.append(ChatColor.DARK_BLUE).append("👤 ").append(entry.getAuthor());
             page.append(" ").append(ChatColor.GOLD).append(changelogManager.getEntryDisplayNumber(entry));
             page.append("\n\n");
-            page.append(ChatColor.BLACK).append(entry.getContent());
+            page.append(ColorUtil.formatText(entry.getContent()));
             
             pages.add(page.toString());
             

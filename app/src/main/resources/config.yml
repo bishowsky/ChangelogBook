@@ -6,6 +6,13 @@ language: "en"
 # Delay time (in ticks) before showing the notification after joining (60 = 3 seconds)
 notification-delay: 60
 
+# Auto-open changelog book on player join
+auto-open:
+  # Enable automatic opening of changelog book when players join
+  enabled: false
+  # Delay in seconds before opening the book (e.g., 3 = wait 3 seconds after join)
+  delay-seconds: 3
+
 # MySQL Database Configuration
 mysql:
   enabled: false

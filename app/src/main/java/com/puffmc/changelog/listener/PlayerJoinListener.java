@@ -32,40 +32,68 @@ public class PlayerJoinListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         
-        // Delay notification to allow proper plugin initialization
-        long notificationDelay = plugin.getConfig().getLong("notification-delay", 60L);
+        // Check if auto-open is enabled
+        boolean autoOpenEnabled = plugin.getConfig().getBoolean("auto-open.enabled", false);
+        int autoOpenDelaySeconds = plugin.getConfig().getInt("auto-open.delay-seconds", 3);
+        long autoOpenDelayTicks = autoOpenDelaySeconds * 20L; // Convert seconds to ticks
         
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (player.isOnline()) {
-                    int newChanges = changelogManager.getNewEntriesCount(player);
-                    
-                    if (newChanges > 0) {
-                        // First message
-                        Map<String, String> placeholders = new HashMap<>();
-                        placeholders.put("count", String.valueOf(newChanges));
-                        String message = messageManager.getMessage("messages.new_entries_count", placeholders);
-                        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        plugin.debug("Player " + player.getName() + " joined. Auto-open: " + autoOpenEnabled);
+        
+        if (autoOpenEnabled) {
+            // Auto-open mode: open book directly if there are new entries
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline()) {
+                        int newChanges = changelogManager.getNewEntriesCount(player);
+                        plugin.debug(player.getName() + " has " + newChanges + " new changelog entries");
                         
-                        // Clickable message
-                        TextComponent clickableMessage = new TextComponent(
-                                ChatColor.GOLD + "/changelog " +
-                                ChatColor.GRAY + "- " +
-                                ChatColor.GOLD + messageManager.getMessage("messages.click_to_view"));
-                        
-                        clickableMessage.setHoverEvent(new HoverEvent(
-                                HoverEvent.Action.SHOW_TEXT, 
-                                new ComponentBuilder(messageManager.getMessage("messages.click_to_view")).create()));
-                        
-                        clickableMessage.setClickEvent(new ClickEvent(
-                                ClickEvent.Action.RUN_COMMAND, 
-                                "/changelog"));
-                        
-                        player.spigot().sendMessage(clickableMessage);
+                        if (newChanges > 0) {
+                            // Open the changelog book directly using the command handler
+                            // This bypasses permission checks and opens the book directly
+                            plugin.debug("Auto-opening changelog book for " + player.getName());
+                            plugin.getCommand("changelog").getExecutor()
+                                .onCommand(player, plugin.getCommand("changelog"), "changelog", new String[]{"show"});
+                        }
                     }
                 }
-            }
-        }.runTaskLater(plugin, notificationDelay);
+            }.runTaskLater(plugin, autoOpenDelayTicks);
+        } else {
+            // Notification mode: show clickable message
+            long notificationDelay = plugin.getConfig().getLong("notification-delay", 60L);
+            
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline()) {
+                        int newChanges = changelogManager.getNewEntriesCount(player);
+                        
+                        if (newChanges > 0) {
+                            // First message
+                            Map<String, String> placeholders = new HashMap<>();
+                            placeholders.put("count", String.valueOf(newChanges));
+                            String message = messageManager.getMessage("messages.new_entries_count", placeholders);
+                            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                            
+                            // Clickable message
+                            TextComponent clickableMessage = new TextComponent(
+                                    ChatColor.GOLD + "/changelog " +
+                                    ChatColor.GRAY + "- " +
+                                    ChatColor.GOLD + messageManager.getMessage("messages.click_to_view"));
+                            
+                            clickableMessage.setHoverEvent(new HoverEvent(
+                                    HoverEvent.Action.SHOW_TEXT, 
+                                    new ComponentBuilder(messageManager.getMessage("messages.click_to_view")).create()));
+                            
+                            clickableMessage.setClickEvent(new ClickEvent(
+                                    ClickEvent.Action.RUN_COMMAND, 
+                                    "/changelog"));
+                            
+                            player.spigot().sendMessage(clickableMessage);
+                        }
+                    }
+                }
+            }.runTaskLater(plugin, notificationDelay);
+        }
     }
 }

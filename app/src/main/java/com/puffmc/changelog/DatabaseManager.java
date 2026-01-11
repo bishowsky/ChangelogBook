@@ -6,7 +6,9 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
 public class DatabaseManager {
@@ -19,6 +21,7 @@ public class DatabaseManager {
     // Table names
     private String entriesTable;
     private String lastSeenTable;
+    private String cooldownsTable;
 
     public DatabaseManager(ChangelogPlugin plugin) {
         this.plugin = plugin;
@@ -41,6 +44,7 @@ public class DatabaseManager {
             
             entriesTable = tablePrefix + "entries";
             lastSeenTable = tablePrefix + "lastseen";
+            cooldownsTable = tablePrefix + "cooldowns";
         } else {
             useMySQL = false;
         }
@@ -105,6 +109,14 @@ public class DatabaseManager {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + lastSeenTable + " (" +
                     "uuid VARCHAR(36) PRIMARY KEY, " +
                     "timestamp BIGINT NOT NULL" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            
+            // Create cooldowns table
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + cooldownsTable + " (" +
+                    "uuid VARCHAR(36) NOT NULL, " +
+                    "reward_type VARCHAR(50) NOT NULL, " +
+                    "timestamp BIGINT NOT NULL, " +
+                    "PRIMARY KEY (uuid, reward_type)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
             plugin.getLogger().info("Database tables initialized successfully!");
@@ -321,6 +333,94 @@ public class DatabaseManager {
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Error getting last seen from database", e);
+        }
+        
+        return 0;
+    }
+
+    /**
+     * Loads all cooldowns from the database
+     * @return Map of UUID -> Map of reward type -> timestamp
+     */
+    public Map<String, Map<String, Long>> loadCooldowns() {
+        Map<String, Map<String, Long>> cooldowns = new HashMap<>();
+        
+        if (!useMySQL) {
+            return cooldowns;
+        }
+        
+        try (Connection connection = getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM " + cooldownsTable)) {
+            
+            while (resultSet.next()) {
+                String uuid = resultSet.getString("uuid");
+                String rewardType = resultSet.getString("reward_type");
+                long timestamp = resultSet.getLong("timestamp");
+                
+                cooldowns.computeIfAbsent(uuid, k -> new HashMap<>()).put(rewardType, timestamp);
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error loading cooldowns from database", e);
+        }
+        
+        return cooldowns;
+    }
+    
+    /**
+     * Saves or updates a cooldown in the database
+     * @param uuid The player's UUID
+     * @param rewardType The reward type
+     * @param timestamp The cooldown timestamp
+     * @return true if successful
+     */
+    public boolean saveCooldown(String uuid, String rewardType, long timestamp) {
+        if (!useMySQL) {
+            return false;
+        }
+        
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO " + cooldownsTable + " (uuid, reward_type, timestamp) VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE timestamp = ?")) {
+            
+            statement.setString(1, uuid);
+            statement.setString(2, rewardType);
+            statement.setLong(3, timestamp);
+            statement.setLong(4, timestamp);
+            
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error saving cooldown to database", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Gets a specific cooldown from the database
+     * @param uuid The player's UUID
+     * @param rewardType The reward type
+     * @return The timestamp or 0 if not found
+     */
+    public long getCooldown(String uuid, String rewardType) {
+        if (!useMySQL) {
+            return 0;
+        }
+        
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                "SELECT timestamp FROM " + cooldownsTable + " WHERE uuid = ? AND reward_type = ?")) {
+            
+            statement.setString(1, uuid);
+            statement.setString(2, rewardType);
+            
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getLong("timestamp");
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error getting cooldown from database", e);
         }
         
         return 0;

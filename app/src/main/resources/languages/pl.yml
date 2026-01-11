@@ -1,4 +1,15 @@
 # ChangelogBook - Polski plik językowy
+#
+# Przykłady formatowania kolorów:
+# Standardowe kolory: &0-9, &a-f (np. &6Złoty tekst, &aZielony tekst)
+# Kody formatowania: &l (pogrubienie), &o (kursywa), &n (podkreślenie), &m (przekreślenie), &k (zaciemnienie), &r (reset)
+# Kolory hex: &#RRGGBB (np. &#FF5733Pomarańczowy, &#3498DBJasnoniebieski)
+#
+# Przykłady:
+#   /changelog add &6Witamy na naszym serwerze!
+#   /changelog add &l&4WAŻNE: &r&cKonserwacja serwera dzisiaj
+#   /changelog add &#FF5733Własny pomarańczowy kolor!
+#   /changelog add &6&l[AKTUALIZACJA] &r&eDodano nowe funkcje
 
 commands:
   help: "§6/changelog §7- Wyświetl pomoc i komendy dziennika zmian"

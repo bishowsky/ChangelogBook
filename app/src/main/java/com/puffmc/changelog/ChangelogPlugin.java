@@ -19,6 +19,7 @@ public class ChangelogPlugin extends JavaPlugin {
     private MessageManager messageManager;
     private RewardManager rewardManager;
     private DatabaseManager databaseManager;
+    private LogManager logManager;
     private boolean debugMode = false;
 
     @Override
@@ -27,19 +28,30 @@ public class ChangelogPlugin extends JavaPlugin {
         saveDefaultConfig();
         setupDataFile();
         
+        // Initialize LogManager
+        logManager = new LogManager(this);
+        logManager.info("ChangelogBook v" + getDescription().getVersion() + " starting...");
+        
         // Initialize MessageManager with configured language
         String language = getConfig().getString("language", "en");
         messageManager = new MessageManager(this, language);
+        logManager.info("Loaded language: " + language);
         
         // Initialize DatabaseManager
         databaseManager = new DatabaseManager(this);
         if (!databaseManager.connect()) {
             getLogger().warning("Failed to connect to database, falling back to YAML storage");
+            logManager.warning("Failed to connect to MySQL database, using YAML storage");
+        } else {
+            logManager.info("Successfully connected to MySQL database");
         }
         
         // Initialize managers
         changelogManager = new ChangelogManager(this);
         rewardManager = new RewardManager(this);
+        
+        // Set database manager for reward manager (for cooldown persistence)
+        rewardManager.setDatabaseManager(databaseManager);
         
         // Register commands
         ChangelogCommand command = new ChangelogCommand(this, changelogManager, messageManager, rewardManager);
@@ -55,11 +67,19 @@ public class ChangelogPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (logManager != null) {
+            logManager.info("ChangelogBook shutting down...");
+        }
+        
         if (changelogManager != null) {
             changelogManager.shutdown();
         }
         if (databaseManager != null) {
             databaseManager.disconnect();
+        }
+        
+        if (logManager != null) {
+            logManager.info("ChangelogBook disabled successfully");
         }
         getLogger().info("ChangelogBook has been disabled!");
     }
@@ -137,6 +157,14 @@ public class ChangelogPlugin extends JavaPlugin {
      */
     public ChangelogManager getChangelogManager() {
         return changelogManager;
+    }
+    
+    /**
+     * Gets the log manager
+     * @return LogManager instance
+     */
+    public LogManager getLogManager() {
+        return logManager;
     }
 
     /**

@@ -1,4 +1,15 @@
 # ChangelogBook - English Language File
+#
+# Color Formatting Examples:
+# Standard colors: &0-9, &a-f (e.g., &6Gold text, &aGreen text)
+# Format codes: &l (bold), &o (italic), &n (underline), &m (strikethrough), &k (obfuscated), &r (reset)
+# Hex colors: &#RRGGBB (e.g., &#FF5733Orange, &#3498DBLight blue)
+#
+# Examples:
+#   /changelog add &6Welcome to our server!
+#   /changelog add &l&4IMPORTANT: &r&cServer maintenance tonight
+#   /changelog add &#FF5733Custom orange color!
+#   /changelog add &6&l[UPDATE] &r&eAdded new features
 
 commands:
   help: "§6/changelog §7- Display changelog help and commands"

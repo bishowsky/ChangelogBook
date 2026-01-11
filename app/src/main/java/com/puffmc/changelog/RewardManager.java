@@ -10,10 +10,20 @@ import java.util.UUID;
 
 public class RewardManager {
     private final ChangelogPlugin plugin;
-    private final Map<UUID, Map<String, Long>> playerCooldowns = new HashMap<>();
+    private final Map<String, Map<String, Long>> playerCooldowns = new HashMap<>();
+    private DatabaseManager databaseManager;
 
     public RewardManager(ChangelogPlugin plugin) {
         this.plugin = plugin;
+    }
+    
+    /**
+     * Sets the database manager instance
+     * @param databaseManager The database manager
+     */
+    public void setDatabaseManager(DatabaseManager databaseManager) {
+        this.databaseManager = databaseManager;
+        loadCooldowns();
     }
 
     /**
@@ -23,7 +33,7 @@ public class RewardManager {
      * @return true if cooldown has passed, false otherwise
      */
     public boolean canClaimReward(Player player, String rewardType) {
-        UUID uuid = player.getUniqueId();
+        String uuid = player.getUniqueId().toString();
         
         if (!playerCooldowns.containsKey(uuid)) {
             return true;
@@ -48,7 +58,7 @@ public class RewardManager {
      * @return Hours remaining, 0 if no cooldown
      */
     public long getRemainingCooldownHours(Player player, String rewardType) {
-        UUID uuid = player.getUniqueId();
+        String uuid = player.getUniqueId().toString();
         
         if (!playerCooldowns.containsKey(uuid) || !playerCooldowns.get(uuid).containsKey(rewardType)) {
             return 0;
@@ -74,6 +84,7 @@ public class RewardManager {
      */
     public boolean claimReward(Player player, String rewardType) {
         if (!canClaimReward(player, rewardType)) {
+            plugin.debug("Player " + player.getName() + " cannot claim " + rewardType + " reward (cooldown active)");
             return false;
         }
 
@@ -81,15 +92,22 @@ public class RewardManager {
         String command = getRewardCommand(rewardType);
         if (command != null && !command.isEmpty()) {
             String finalCommand = command.replace("%player%", player.getName());
+            plugin.debug("Executing reward command for " + player.getName() + ": " + finalCommand);
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
         }
 
         // Update cooldown
-        UUID uuid = player.getUniqueId();
+        String uuid = player.getUniqueId().toString();
+        long timestamp = System.currentTimeMillis();
+        
         if (!playerCooldowns.containsKey(uuid)) {
             playerCooldowns.put(uuid, new HashMap<>());
         }
-        playerCooldowns.get(uuid).put(rewardType, System.currentTimeMillis());
+        playerCooldowns.get(uuid).put(rewardType, timestamp);
+        plugin.debug("Set cooldown for " + player.getName() + " on " + rewardType + " reward");
+        
+        // Save to database/YAML
+        saveCooldown(uuid, rewardType, timestamp);
 
         return true;
     }
@@ -160,16 +178,76 @@ public class RewardManager {
     }
 
     /**
-     * Loads cooldowns from database (when implemented)
+     * Loads cooldowns from database or YAML
      */
     public void loadCooldowns() {
-        // TODO: Implement database loading of cooldowns
+        playerCooldowns.clear();
+        
+        if (databaseManager != null && databaseManager.isUsingMySQL()) {
+            // Load from MySQL
+            playerCooldowns.putAll(databaseManager.loadCooldowns());
+            plugin.getLogger().info("Loaded " + playerCooldowns.size() + " reward cooldowns from database");
+        } else {
+            // Load from YAML
+            loadCooldownsFromYaml();
+        }
+    }
+    
+    /**
+     * Loads cooldowns from YAML file
+     */
+    private void loadCooldownsFromYaml() {
+        var data = plugin.getDataConfig();
+        var cooldownsSection = data.getConfigurationSection("cooldowns");
+        
+        if (cooldownsSection != null) {
+            for (String uuid : cooldownsSection.getKeys(false)) {
+                var playerSection = cooldownsSection.getConfigurationSection(uuid);
+                if (playerSection != null) {
+                    Map<String, Long> rewards = new HashMap<>();
+                    for (String rewardType : playerSection.getKeys(false)) {
+                        rewards.put(rewardType, playerSection.getLong(rewardType));
+                    }
+                    playerCooldowns.put(uuid, rewards);
+                }
+            }
+            plugin.getLogger().info("Loaded " + playerCooldowns.size() + " reward cooldowns from YAML");
+        }
+    }
+    
+    /**
+     * Saves a single cooldown to database or YAML
+     */
+    private void saveCooldown(String uuid, String rewardType, long timestamp) {
+        if (databaseManager != null && databaseManager.isUsingMySQL()) {
+            // Save to MySQL asynchronously
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    databaseManager.saveCooldown(uuid, rewardType, timestamp);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Error saving cooldown to database: " + e.getMessage());
+                }
+            });
+        } else {
+            // Save to YAML asynchronously
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, this::saveCooldownsToYaml);
+        }
     }
 
     /**
-     * Saves cooldowns to database (when implemented)
+     * Saves all cooldowns to YAML file
      */
-    public void saveCooldowns() {
-        // TODO: Implement database saving of cooldowns
+    private void saveCooldownsToYaml() {
+        var data = plugin.getDataConfig();
+        data.set("cooldowns", null);
+        
+        for (var entry : playerCooldowns.entrySet()) {
+            String uuid = entry.getKey();
+            for (var reward : entry.getValue().entrySet()) {
+                data.set("cooldowns." + uuid + "." + reward.getKey(), reward.getValue());
+            }
+        }
+        
+        plugin.saveDataConfig();
     }
 }

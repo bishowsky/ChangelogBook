@@ -38,10 +38,12 @@ public class ChangelogManager {
      * Loads data from MySQL database asynchronously
      */
     private void loadFromDatabase() {
+        plugin.debug("Loading changelog data from MySQL...");
         entries.clear();
         lastSeenMap.clear();
         
         entries.addAll(databaseManager.loadEntries());
+        plugin.debug("Loaded " + entries.size() + " changelog entries from database");
         
         for (DatabaseManager.PlayerLastSeen lastSeen : databaseManager.loadLastSeen()) {
             try {
@@ -51,6 +53,7 @@ public class ChangelogManager {
                 plugin.getLogger().warning("Invalid UUID in database: " + lastSeen.getUuid());
             }
         }
+        plugin.debug("Loaded " + lastSeenMap.size() + " player last-seen records from database");
     }
 
     /**
@@ -161,13 +164,22 @@ public class ChangelogManager {
      */
     public ChangelogEntry addEntry(String content, String author) {
         ChangelogEntry entry = new ChangelogEntry(content, author, System.currentTimeMillis());
+        plugin.debug("Adding new changelog entry by " + author + ": " + content.substring(0, Math.min(50, content.length())));
         
         if (databaseManager.isUsingMySQL()) {
             // Async database save
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    databaseManager.addEntry(entry);
+                    try {
+                        databaseManager.addEntry(entry);
+                        plugin.debug("Changelog entry saved to database: " + entry.getId());
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error adding entry to database: " + e.getMessage());
+                        if (plugin.isDebugMode()) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }.runTaskAsynchronously(plugin);
         } else {
@@ -193,7 +205,14 @@ public class ChangelogManager {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            databaseManager.updateEntry(id, content);
+                            try {
+                                databaseManager.updateEntry(id, content);
+                            } catch (Exception e) {
+                                plugin.getLogger().severe("Error updating entry in database: " + e.getMessage());
+                                if (plugin.isDebugMode()) {
+                                    e.printStackTrace();
+                                }
+                            }
                         }
                     }.runTaskAsynchronously(plugin);
                 } else {
@@ -220,7 +239,14 @@ public class ChangelogManager {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            databaseManager.removeEntry(id);
+                            try {
+                                databaseManager.removeEntry(id);
+                            } catch (Exception e) {
+                                plugin.getLogger().severe("Error removing entry from database: " + e.getMessage());
+                                if (plugin.isDebugMode()) {
+                                    e.printStackTrace();
+                                }
+                            }
                         }
                     }.runTaskAsynchronously(plugin);
                 } else {
@@ -271,12 +297,20 @@ public class ChangelogManager {
         long timestamp = System.currentTimeMillis();
         
         lastSeenMap.put(uuid, timestamp);
+        plugin.debug("Updated last-seen for player " + player.getName() + " (" + uuid + ")");
         
         if (databaseManager.isUsingMySQL()) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    databaseManager.updateLastSeen(uuid.toString(), timestamp);
+                    try {
+                        databaseManager.updateLastSeen(uuid.toString(), timestamp);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Error updating last-seen in database: " + e.getMessage());
+                        if (plugin.isDebugMode()) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }.runTaskAsynchronously(plugin);
         } else {
