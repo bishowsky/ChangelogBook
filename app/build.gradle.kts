@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "com.puffmc"
-version = "1.0.0"
+version = "1.4.0"
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -26,6 +26,9 @@ repositories {
 dependencies {
     // Spigot API - supports 1.8 to 1.21.11
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
+    
+    // Gson - available in Spigot/Paper runtime
+    compileOnly("com.google.code.gson:gson:2.10.1")
     
     // MySQL connector
     implementation("mysql:mysql-connector-java:8.0.33")
@@ -73,6 +76,13 @@ tasks {
     
     test {
         useJUnitPlatform()
+    }
+    
+    processResources {
+        val projectVersion = project.version.toString()
+        filesMatching("plugin.yml") {
+            expand("version" to projectVersion)
+        }
     }
     
     build {

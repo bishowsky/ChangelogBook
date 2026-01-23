@@ -63,3 +63,23 @@ errors:
   invalid_syntax: "§cNieprawidłowa składnia. Wpisz §6/changelog help §caby uzyskać więcej informacji"
   entry_not_found: "§cWpis w dzienniku zmian nie znaleziony (ID: %id%)"
   cooldown_active: "§cMusisz czekać §e%hours% §cgodzin przed odebraniem kolejnej nagrody"
+
+update:
+  available: "§6Dostępna nowa wersja: §e%new_version% §7(Obecna: %current_version%)"
+  download: "§eKliknij aby pobrać"
+  hover: "§7Kliknij aby otworzyć stronę pobierania"
+  up_to_date: "§aUżywasz najnowszej wersji!"
+  checking: "§7Sprawdzanie aktualizacji..."
+  error: "§cNie udało się sprawdzić aktualizacji"
+  disabled: "§7Sprawdzanie aktualizacji jest wyłączone w konfiguracji"
+
+info:
+  header: "§8§m====================§r"
+  footer: "§8§m====================§r"
+  plugin_version: "§6Wersja pluginu: §e%pluginversion%"
+  server_type: "§6Typ serwera: §e%servertype%"
+  server_version: "§6Wersja serwera: §e%serverversion%"
+  update_notifier: "§6Sprawdzanie aktualizacji: §e%updatenotifier%"
+  database: "§6Baza danych: §e%database%"
+  database_type: "§6Typ bazy danych: §e%databasetype%"
+  database_sync: "§6Synchronizacja bazy: §e%databasesync% §7(planowane)"

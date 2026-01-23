@@ -88,4 +88,36 @@ public class VersionUtil {
     public static int getMinorVersion() {
         return MINOR_VERSION;
     }
+
+    /**
+     * Detects the server software type.
+     *
+     * @return server type (e.g., "Paper", "Spigot", "Purpur", "Folia", "Unknown")
+     */
+    public static String getServerType() {
+        String version = Bukkit.getVersion().toLowerCase();
+        
+        if (version.contains("paper")) {
+            return "Paper";
+        } else if (version.contains("purpur")) {
+            return "Purpur";
+        } else if (version.contains("folia")) {
+            return "Folia";
+        } else if (version.contains("spigot")) {
+            return "Spigot";
+        } else if (version.contains("craftbukkit")) {
+            return "CraftBukkit";
+        }
+        
+        return "Unknown";
+    }
+
+    /**
+     * Gets the server version as a readable string.
+     *
+     * @return server version string (e.g., "1.21.3")
+     */
+    public static String getServerVersionString() {
+        return VERSION;
+    }
 }

@@ -4,8 +4,11 @@ import com.puffmc.changelog.ChangelogEntry;
 import com.puffmc.changelog.ChangelogPlugin;
 import com.puffmc.changelog.MessageManager;
 import com.puffmc.changelog.RewardManager;
+import com.puffmc.changelog.UpdateChecker;
 import com.puffmc.changelog.manager.ChangelogManager;
 import com.puffmc.changelog.util.ColorUtil;
+import com.puffmc.changelog.util.ComponentUtil;
+import com.puffmc.changelog.util.VersionUtil;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -31,12 +34,14 @@ public class ChangelogCommand implements CommandExecutor {
     private final ChangelogManager changelogManager;
     private final MessageManager messageManager;
     private final RewardManager rewardManager;
+    private final UpdateChecker updateChecker;
 
-    public ChangelogCommand(ChangelogPlugin plugin, ChangelogManager changelogManager, MessageManager messageManager, RewardManager rewardManager) {
+    public ChangelogCommand(ChangelogPlugin plugin, ChangelogManager changelogManager, MessageManager messageManager, RewardManager rewardManager, UpdateChecker updateChecker) {
         this.plugin = plugin;
         this.changelogManager = changelogManager;
         this.messageManager = messageManager;
         this.rewardManager = rewardManager;
+        this.updateChecker = updateChecker;
     }
 
     @Override
@@ -115,6 +120,20 @@ public class ChangelogCommand implements CommandExecutor {
                     return true;
                 }
                 return handleDebugCommand(sender, args);
+                
+            case "checkupdate":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleCheckUpdateCommand(sender);
+                
+            case "info":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleInfoCommand(sender);
                 
             default:
                 showHelpMenu(sender);
@@ -318,6 +337,78 @@ public class ChangelogCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean handleCheckUpdateCommand(CommandSender sender) {
+        if (!updateChecker.isEnabled()) {
+            sender.sendMessage(messageManager.getMessage("update.disabled"));
+            return true;
+        }
+
+        sender.sendMessage(messageManager.getMessage("update.checking"));
+        
+        // Force refresh the update check asynchronously
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            updateChecker.checkForUpdates(true);
+            
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (updateChecker.isUpdateAvailable()) {
+                    if (sender instanceof Player) {
+                        TextComponent updateNotification = ComponentUtil.createUpdateNotification(
+                            messageManager,
+                            updateChecker.getCurrentVersion(),
+                            updateChecker.getLatestVersion(),
+                            updateChecker.getDownloadUrl()
+                        );
+                        ((Player) sender).spigot().sendMessage(updateNotification);
+                    } else {
+                        String message = messageManager.getMessage("update.available")
+                            .replace("%current_version%", updateChecker.getCurrentVersion())
+                            .replace("%new_version%", updateChecker.getLatestVersion());
+                        sender.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+                        sender.sendMessage(ChatColor.YELLOW + "Download: " + updateChecker.getDownloadUrl());
+                    }
+                } else {
+                    sender.sendMessage(messageManager.getMessage("update.up_to_date"));
+                }
+            });
+        });
+
+        return true;
+    }
+
+    private boolean handleInfoCommand(CommandSender sender) {
+        // Gather plugin information
+        String pluginVersion = plugin.getDescription().getVersion();
+        String serverType = VersionUtil.getServerType();
+        String serverVersion = VersionUtil.getServerVersionString();
+        boolean updateNotifierEnabled = plugin.getConfig().getBoolean("update-checker.enabled", true);
+        boolean databaseEnabled = plugin.getDatabaseManager().isUsingMySQL();
+        String databaseType = plugin.getConfig().getBoolean("mysql.enabled", false) ? "MySQL" : "YAML";
+        boolean databaseSync = plugin.getConfig().getBoolean("mysql.sync", false);
+
+        // Create placeholders map
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("pluginversion", pluginVersion);
+        placeholders.put("servertype", serverType);
+        placeholders.put("serverversion", serverVersion);
+        placeholders.put("updatenotifier", updateNotifierEnabled ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled");
+        placeholders.put("database", databaseEnabled ? ChatColor.GREEN + "Connected" : ChatColor.RED + "Disconnected");
+        placeholders.put("databasetype", databaseType);
+        placeholders.put("databasesync", databaseSync ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled");
+
+        // Send formatted info
+        sender.sendMessage(messageManager.getMessage("info.header", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.plugin_version", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.server_type", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.server_version", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.update_notifier", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.database", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.database_type", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.database_sync", placeholders));
+        sender.sendMessage(messageManager.getMessage("info.footer", placeholders));
+
+        return true;
+    }
+
     private void broadcastChangelogNotification() {
         TextComponent message = new TextComponent(ChatColor.GRAY + "[" + 
                                                  ChatColor.YELLOW + "Changelog" + 
@@ -349,6 +440,8 @@ public class ChangelogCommand implements CommandExecutor {
             sender.sendMessage(ChatColor.GOLD + "/changelog reload" + ChatColor.WHITE + " - Reload configuration");
             sender.sendMessage(ChatColor.GOLD + "/changelog give <player> <type>" + ChatColor.WHITE + " - Give a reward");
             sender.sendMessage(ChatColor.GOLD + "/changelog debug <on|off>" + ChatColor.WHITE + " - Toggle debug mode");
+            sender.sendMessage(ChatColor.GOLD + "/changelog checkupdate" + ChatColor.WHITE + " - Check for plugin updates");
+            sender.sendMessage(ChatColor.GOLD + "/changelog info" + ChatColor.WHITE + " - Show plugin information");
         }
     }
 

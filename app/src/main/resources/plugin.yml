@@ -1,5 +1,5 @@
 name: ChangelogBook
-version: '1.0.0'
+version: '${version}'
 main: com.puffmc.changelog.ChangelogPlugin
 api-version: '1.21'
 authors: [Bishyy]
@@ -16,4 +16,7 @@ permissions:
     default: true
   changelogbook.admin:
     description: Allows access to changelog administration
+    default: op
+  changelogbook.update.notify:
+    description: Receive plugin update notifications
     default: op

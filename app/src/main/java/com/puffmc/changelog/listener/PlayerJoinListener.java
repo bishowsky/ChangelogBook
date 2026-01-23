@@ -2,7 +2,9 @@ package com.puffmc.changelog.listener;
 
 import com.puffmc.changelog.ChangelogPlugin;
 import com.puffmc.changelog.MessageManager;
+import com.puffmc.changelog.UpdateChecker;
 import com.puffmc.changelog.manager.ChangelogManager;
+import com.puffmc.changelog.util.ComponentUtil;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -21,11 +23,13 @@ public class PlayerJoinListener implements Listener {
     private final ChangelogPlugin plugin;
     private final ChangelogManager changelogManager;
     private final MessageManager messageManager;
+    private final UpdateChecker updateChecker;
 
-    public PlayerJoinListener(ChangelogPlugin plugin, ChangelogManager changelogManager, MessageManager messageManager) {
+    public PlayerJoinListener(ChangelogPlugin plugin, ChangelogManager changelogManager, MessageManager messageManager, UpdateChecker updateChecker) {
         this.plugin = plugin;
         this.changelogManager = changelogManager;
         this.messageManager = messageManager;
+        this.updateChecker = updateChecker;
     }
 
     @EventHandler
@@ -94,6 +98,27 @@ public class PlayerJoinListener implements Listener {
                     }
                 }
             }.runTaskLater(plugin, notificationDelay);
+        }
+        
+        // Check for plugin updates (separate from changelog notifications)
+        if (plugin.getConfig().getBoolean("update-checker.notify-on-join", true)) {
+            // Delay update notification by 10 seconds (200 ticks) after join
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline() && (player.hasPermission("changelogbook.update.notify") || player.isOp())) {
+                        if (updateChecker.isUpdateAvailable()) {
+                            TextComponent updateNotification = ComponentUtil.createUpdateNotification(
+                                messageManager,
+                                updateChecker.getCurrentVersion(),
+                                updateChecker.getLatestVersion(),
+                                updateChecker.getDownloadUrl()
+                            );
+                            player.spigot().sendMessage(updateNotification);
+                        }
+                    }
+                }
+            }.runTaskLater(plugin, 200L); // 10 seconds delay
         }
     }
 }

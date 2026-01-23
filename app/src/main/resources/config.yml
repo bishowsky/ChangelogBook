@@ -22,6 +22,8 @@ mysql:
   username: root
   password: "change_me"
   table-prefix: changelog_
+  # Multi-server database synchronization (planned feature)
+  sync: false
 
 # Reward System Configuration
 rewards:
@@ -49,6 +51,17 @@ rewards:
       cooldown-hours: 12
       max-days: 30
       command: "say %player% received gold reward!"
+
+# Update Checker Configuration
+update-checker:
+  # Enable checking for plugin updates from GitHub
+  enabled: true
+  # How often to check for updates (in hours)
+  check-interval-hours: 6
+  # GitHub repository in format "owner/repo"
+  github-repo: "bishowsky/ChangelogBook"
+  # Notify players with permission on join
+  notify-on-join: true
 
 # Debug mode - set to true for verbose logging
 debug: false

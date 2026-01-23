@@ -7,6 +7,7 @@ import com.puffmc.changelog.manager.ChangelogManager;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,7 @@ public class ChangelogPlugin extends JavaPlugin {
     private RewardManager rewardManager;
     private DatabaseManager databaseManager;
     private LogManager logManager;
+    private UpdateChecker updateChecker;
     private boolean debugMode = false;
 
     @Override
@@ -53,14 +55,36 @@ public class ChangelogPlugin extends JavaPlugin {
         // Set database manager for reward manager (for cooldown persistence)
         rewardManager.setDatabaseManager(databaseManager);
         
+        // Initialize UpdateChecker
+        updateChecker = new UpdateChecker(this, getConfig(), logManager);
+        
+        // Start initial update check after 30 seconds (600 ticks)
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                updateChecker.checkForUpdates();
+            }
+        }.runTaskLaterAsynchronously(this, 600L);
+        
+        // Schedule periodic update checks
+        long checkIntervalHours = getConfig().getLong("update-checker.check-interval-hours", 6);
+        long checkIntervalTicks = checkIntervalHours * 72000L; // Convert hours to ticks (1 hour = 72000 ticks)
+        
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                updateChecker.checkForUpdates();
+            }
+        }.runTaskTimerAsynchronously(this, 600L, checkIntervalTicks);
+        
         // Register commands
-        ChangelogCommand command = new ChangelogCommand(this, changelogManager, messageManager, rewardManager);
+        ChangelogCommand command = new ChangelogCommand(this, changelogManager, messageManager, rewardManager, updateChecker);
         getCommand("changelog").setExecutor(command);
         getCommand("changelog").setTabCompleter(new ChangelogTabCompleter(this, changelogManager));
         
         // Register events
         getServer().getPluginManager().registerEvents(
-                new PlayerJoinListener(this, changelogManager, messageManager), this);
+                new PlayerJoinListener(this, changelogManager, messageManager, updateChecker), this);
         
         getLogger().info("ChangelogBook v" + getDescription().getVersion() + " has been enabled!");
     }
@@ -165,6 +189,14 @@ public class ChangelogPlugin extends JavaPlugin {
      */
     public LogManager getLogManager() {
         return logManager;
+    }
+
+    /**
+     * Gets the database manager
+     * @return DatabaseManager instance
+     */
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     /**

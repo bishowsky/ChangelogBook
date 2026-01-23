@@ -63,3 +63,23 @@ errors:
   invalid_syntax: "§cInvalid syntax. Type §6/changelog help §cfor more information"
   entry_not_found: "§cChangelog entry not found with ID: %id%"
   cooldown_active: "§cYou must wait §e%hours% §chours before claiming another reward"
+
+update:
+  available: "§6New version available: §e%new_version% §7(Current: %current_version%)"
+  download: "§eClick to download"
+  hover: "§7Click to open download page"
+  up_to_date: "§aYou are running the latest version!"
+  checking: "§7Checking for updates..."
+  error: "§cFailed to check for updates"
+  disabled: "§7Update checker is disabled in config"
+
+info:
+  header: "§8§m====================§r"
+  footer: "§8§m====================§r"
+  plugin_version: "§6Plugin version: §e%pluginversion%"
+  server_type: "§6Server type: §e%servertype%"
+  server_version: "§6Server version: §e%serverversion%"
+  update_notifier: "§6Update notifier: §e%updatenotifier%"
+  database: "§6Database: §e%database%"
+  database_type: "§6Database type: §e%databasetype%"
+  database_sync: "§6Database sync: §e%databasesync% §7(planned)"

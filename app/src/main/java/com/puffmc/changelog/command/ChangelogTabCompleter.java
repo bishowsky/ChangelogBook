@@ -39,6 +39,8 @@ public class ChangelogTabCompleter implements TabCompleter {
                 subcommands.add("reload");
                 subcommands.add("give");
                 subcommands.add("debug");
+                subcommands.add("checkupdate");
+                subcommands.add("info");
             }
 
             String arg = args[0].toLowerCase();
