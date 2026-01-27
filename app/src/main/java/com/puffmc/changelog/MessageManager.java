@@ -132,4 +132,12 @@ public class MessageManager {
         }
         return message;
     }
+
+    /**
+     * Gets the underlying FileConfiguration for direct access
+     * @return FileConfiguration instance
+     */
+    public FileConfiguration getMessages() {
+        return messages;
+    }
 }

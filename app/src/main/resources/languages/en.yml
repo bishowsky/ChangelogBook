@@ -73,13 +73,25 @@ update:
   error: "§cFailed to check for updates"
   disabled: "§7Update checker is disabled in config"
 
+# Info command - fully customizable line list
+# Use "" for empty lines, add/remove/reorder lines as needed
+# Available placeholders: %pluginversion%, %servertype%, %serverversion%,
+#                         %updatenotifier%, %database%, %databasetype%, %databasesync%
 info:
-  header: "§8§m====================§r"
-  footer: "§8§m====================§r"
-  plugin_version: "§6Plugin version: §e%pluginversion%"
-  server_type: "§6Server type: §e%servertype%"
-  server_version: "§6Server version: §e%serverversion%"
-  update_notifier: "§6Update notifier: §e%updatenotifier%"
-  database: "§6Database: §e%database%"
-  database_type: "§6Database type: §e%databasetype%"
-  database_sync: "§6Database sync: §e%databasesync% §7(planned)"
+  - "&8&m====================&r"
+  - ""
+  - "&6Plugin version: &e%pluginversion%"
+  - "&6Server type: &e%servertype%"
+  - "&6Server version: &e%serverversion%"
+  - ""
+  - "&6Update notifier: &e%updatenotifier%"
+  - "&6Database: &e%database%"
+  - "&6Database type: &e%databasetype%"
+  - "&6Database sync: &e%databasesync% &7(planned)"
+  - ""
+  - "&b&lPermissions:"
+  - "&7- &echangelogbook.use &7(view changelog)"
+  - "&7- &echangelogbook.admin &7(manage)"
+  - "&7- &echangelogbook.update.notify &7(updates)"
+  - ""
+  - "&8&m====================&r"

@@ -73,13 +73,25 @@ update:
   error: "§cNie udało się sprawdzić aktualizacji"
   disabled: "§7Sprawdzanie aktualizacji jest wyłączone w konfiguracji"
 
+# Komenda info - w pełni customizowalna lista linii
+# Użyj "" dla pustych linii, dodawaj/usuwaj/przestawiaj linie jak chcesz
+# Dostępne placeholdery: %pluginversion%, %servertype%, %serverversion%,
+#                         %updatenotifier%, %database%, %databasetype%, %databasesync%
 info:
-  header: "§8§m====================§r"
-  footer: "§8§m====================§r"
-  plugin_version: "§6Wersja pluginu: §e%pluginversion%"
-  server_type: "§6Typ serwera: §e%servertype%"
-  server_version: "§6Wersja serwera: §e%serverversion%"
-  update_notifier: "§6Sprawdzanie aktualizacji: §e%updatenotifier%"
-  database: "§6Baza danych: §e%database%"
-  database_type: "§6Typ bazy danych: §e%databasetype%"
-  database_sync: "§6Synchronizacja bazy: §e%databasesync% §7(planowane)"
+  - "&8&m====================&r"
+  - ""
+  - "&6Wersja pluginu: &e%pluginversion%"
+  - "&6Typ serwera: &e%servertype%"
+  - "&6Wersja serwera: &e%serverversion%"
+  - ""
+  - "&6Sprawdzanie aktualizacji: &e%updatenotifier%"
+  - "&6Baza danych: &e%database%"
+  - "&6Typ bazy danych: &e%databasetype%"
+  - "&6Synchronizacja bazy: &e%databasesync% &7(planowane)"
+  - ""
+  - "&b&lUprawnienia:"
+  - "&7- &echangelogbook.use &7(przeglądanie)"
+  - "&7- &echangelogbook.admin &7(zarządzanie)"
+  - "&7- &echangelogbook.update.notify &7(powiadomienia)"
+  - ""
+  - "&8&m====================&r"

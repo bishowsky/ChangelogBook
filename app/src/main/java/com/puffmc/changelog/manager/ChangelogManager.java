@@ -123,37 +123,46 @@ public class ChangelogManager {
             return;
         }
         
-        saveToYaml();
+        saveToYaml(false);
     }
     
     /**
-     * Saves all data to YAML files asynchronously
+     * Saves all data to YAML files
+     * @param synchronous If true, saves synchronously (used during shutdown)
      */
-    private void saveToYaml() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                FileConfiguration data = plugin.getDataConfig();
-                
-                // Save entries
-                data.set("entries", null);
-                for (ChangelogEntry entry : entries) {
-                    String path = "entries." + entry.getId();
-                    data.set(path + ".content", entry.getContent());
-                    data.set(path + ".author", entry.getAuthor());
-                    data.set(path + ".timestamp", entry.getTimestamp());
-                    data.set(path + ".deleted", entry.isDeleted());
-                }
-                
-                // Save last seen timestamps
-                data.set("last_seen", null);
-                for (Map.Entry<UUID, Long> entry : lastSeenMap.entrySet()) {
-                    data.set("last_seen." + entry.getKey().toString(), entry.getValue());
-                }
-                
-                plugin.saveDataConfig();
+    private void saveToYaml(boolean synchronous) {
+        Runnable saveTask = () -> {
+            FileConfiguration data = plugin.getDataConfig();
+            
+            // Save entries
+            data.set("entries", null);
+            for (ChangelogEntry entry : entries) {
+                String path = "entries." + entry.getId();
+                data.set(path + ".content", entry.getContent());
+                data.set(path + ".author", entry.getAuthor());
+                data.set(path + ".timestamp", entry.getTimestamp());
+                data.set(path + ".deleted", entry.isDeleted());
             }
-        }.runTaskAsynchronously(plugin);
+            
+            // Save last seen timestamps
+            data.set("last_seen", null);
+            for (Map.Entry<UUID, Long> entry : lastSeenMap.entrySet()) {
+                data.set("last_seen." + entry.getKey().toString(), entry.getValue());
+            }
+            
+            plugin.saveDataConfig();
+        };
+        
+        if (synchronous) {
+            saveTask.run();
+        } else {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    saveTask.run();
+                }
+            }.runTaskAsynchronously(plugin);
+        }
     }
 
     /**
@@ -396,7 +405,9 @@ public class ChangelogManager {
     }
     
     public void shutdown() {
-        saveData();
+        if (!databaseManager.isUsingMySQL()) {
+            saveToYaml(true); // Synchronous save during shutdown
+        }
         if (databaseManager != null) {
             databaseManager.disconnect();
         }

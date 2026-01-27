@@ -395,16 +395,23 @@ public class ChangelogCommand implements CommandExecutor {
         placeholders.put("databasetype", databaseType);
         placeholders.put("databasesync", databaseSync ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled");
 
-        // Send formatted info
-        sender.sendMessage(messageManager.getMessage("info.header", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.plugin_version", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.server_type", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.server_version", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.update_notifier", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.database", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.database_type", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.database_sync", placeholders));
-        sender.sendMessage(messageManager.getMessage("info.footer", placeholders));
+        // Get info lines from language file
+        List<String> infoLines = messageManager.getMessages().getStringList("info");
+        
+        if (infoLines.isEmpty()) {
+            // Fallback if list is not found
+            sender.sendMessage(ChatColor.RED + "Info command is not configured properly in language file.");
+            return true;
+        }
+        
+        // Send each line with placeholder replacement
+        for (String line : infoLines) {
+            String formattedLine = line;
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                formattedLine = formattedLine.replace("%" + entry.getKey() + "%", entry.getValue());
+            }
+            sender.sendMessage(ChatColor.translateAlternateColorCodes('&', formattedLine));
+        }
 
         return true;
     }

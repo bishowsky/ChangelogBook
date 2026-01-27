@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "com.puffmc"
-version = "1.4.0"
+version = "1.5.0"
 
 repositories {
     // Use Maven Central for resolving dependencies.
