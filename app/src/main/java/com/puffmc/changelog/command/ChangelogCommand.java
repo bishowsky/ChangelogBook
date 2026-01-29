@@ -465,20 +465,20 @@ public class ChangelogCommand implements CommandExecutor {
         ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta meta = (BookMeta) book.getItemMeta();
         
-        meta.setTitle(ChatColor.GOLD + "Changelog");
-        meta.setAuthor("Administrator");
+        meta.setTitle(ChatColor.GOLD + messageManager.getMessage("book.title"));
+        meta.setAuthor(messageManager.getMessage("book.author"));
         
         List<String> pages = new ArrayList<>();
         
         int newChangesCount = changelogManager.getNewEntriesCount(player);
         
         StringBuilder titlePage = new StringBuilder();
-        titlePage.append(ChatColor.DARK_RED).append("⚒ Changelog ⚒\n\n");
+        titlePage.append(ChatColor.DARK_RED).append(messageManager.getMessage("book.first_page_title")).append("\n\n");
         titlePage.append(ChatColor.DARK_GRAY).append("━━━━━━━━━━━━━━━━━━\n\n");
-        titlePage.append(ChatColor.BLACK).append("Server changelog\n\n");
-        titlePage.append(ChatColor.DARK_BLUE).append("➤ Total: ");
+        titlePage.append(ChatColor.BLACK).append(messageManager.getMessage("book.first_page_subtitle")).append("\n\n");
+        titlePage.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.first_page_total"));
         titlePage.append(ChatColor.DARK_AQUA).append(entries.size()).append("\n");
-        titlePage.append(ChatColor.DARK_BLUE).append("➤ New: ");
+        titlePage.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.first_page_new"));
         
         if (newChangesCount > 0) {
             titlePage.append(ChatColor.GREEN).append(newChangesCount);
@@ -488,7 +488,7 @@ public class ChangelogCommand implements CommandExecutor {
         
         titlePage.append("\n\n");
         titlePage.append(ChatColor.DARK_GRAY).append("━━━━━━━━━━━━━━━━━━\n\n");
-        titlePage.append(ChatColor.GOLD).append("Scroll to view changes");
+        titlePage.append(ChatColor.GOLD).append(messageManager.getMessage("book.first_page_scroll"));
         
         pages.add(titlePage.toString());
         
@@ -498,8 +498,8 @@ public class ChangelogCommand implements CommandExecutor {
         
         for (ChangelogEntry entry : entries) {
             StringBuilder page = new StringBuilder();
-            page.append(ChatColor.DARK_BLUE).append("📅 ").append(changelogManager.formatDate(entry.getTimestamp())).append("\n");
-            page.append(ChatColor.DARK_BLUE).append("👤 ").append(entry.getAuthor());
+            page.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.entry_date_prefix")).append(changelogManager.formatDate(entry.getTimestamp())).append("\n");
+            page.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.entry_author_prefix")).append(entry.getAuthor());
             page.append(" ").append(ChatColor.GOLD).append(changelogManager.getEntryDisplayNumber(entry));
             page.append("\n\n");
             page.append(ColorUtil.formatText(entry.getContent()));

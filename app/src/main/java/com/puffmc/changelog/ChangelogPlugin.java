@@ -52,6 +52,9 @@ public class ChangelogPlugin extends JavaPlugin {
         changelogManager = new ChangelogManager(this);
         rewardManager = new RewardManager(this);
         
+        // Set MessageManager for ChangelogManager (for date translations)
+        changelogManager.setMessageManager(messageManager);
+        
         // Set database manager for reward manager (for cooldown persistence)
         rewardManager.setDatabaseManager(databaseManager);
         

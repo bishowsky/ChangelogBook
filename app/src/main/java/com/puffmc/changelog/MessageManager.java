@@ -1,5 +1,6 @@
 package com.puffmc.changelog;
 
+import com.puffmc.changelog.util.ColorUtil;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,7 +14,7 @@ import java.util.Map;
 
 public class MessageManager {
     private final JavaPlugin plugin;
-    private final String language;
+    private String language;
     private FileConfiguration messages;
     private final Map<String, String> defaultMessages = new HashMap<>();
 
@@ -45,6 +46,10 @@ public class MessageManager {
     }
 
     public void reload() {
+        // Re-read language from config in case it changed
+        String configLanguage = plugin.getConfig().getString("language", "en");
+        this.language = configLanguage.toLowerCase();
+        
         File languageDir = new File(plugin.getDataFolder(), "languages");
         if (!languageDir.exists()) {
             languageDir.mkdirs();
@@ -121,7 +126,8 @@ public class MessageManager {
             }
         }
 
-        return message;
+        // Format colors using ColorUtil
+        return ColorUtil.formatText(message);
     }
 
     public String format(String message, Map<String, String> placeholders) {
@@ -130,7 +136,8 @@ public class MessageManager {
                 message = message.replace("%" + placeholder.getKey() + "%", placeholder.getValue());
             }
         }
-        return message;
+        // Format colors using ColorUtil
+        return ColorUtil.formatText(message);
     }
 
     /**

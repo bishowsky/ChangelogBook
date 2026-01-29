@@ -3,6 +3,7 @@ package com.puffmc.changelog.manager;
 import com.puffmc.changelog.ChangelogEntry;
 import com.puffmc.changelog.ChangelogPlugin;
 import com.puffmc.changelog.DatabaseManager;
+import com.puffmc.changelog.MessageManager;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -16,6 +17,7 @@ public class ChangelogManager {
     private final Map<UUID, Long> lastSeenMap = new HashMap<>();
     private final List<ChangelogEntry> entries = new ArrayList<>();
     private final DatabaseManager databaseManager;
+    private MessageManager messageManager;
 
     public ChangelogManager(ChangelogPlugin plugin) {
         this.plugin = plugin;
@@ -367,13 +369,15 @@ public class ChangelogManager {
         SimpleDateFormat shortDateFormat = new SimpleDateFormat("dd.MM.yyyy");
         
         if (isSameDay(entryTime, now)) {
-            return "Today " + timeFormat.format(entryTime.getTime());
+            String today = messageManager != null ? messageManager.getMessage("dates.today") : "Today";
+            return today + " " + timeFormat.format(entryTime.getTime());
         }
         
         Calendar yesterday = Calendar.getInstance();
         yesterday.add(Calendar.DAY_OF_YEAR, -1);
         if (isSameDay(entryTime, yesterday)) {
-            return "Yesterday " + timeFormat.format(entryTime.getTime());
+            String yesterdayStr = messageManager != null ? messageManager.getMessage("dates.yesterday") : "Yesterday";
+            return yesterdayStr + " " + timeFormat.format(entryTime.getTime());
         }
         
         Calendar lastWeek = Calendar.getInstance();
@@ -387,14 +391,27 @@ public class ChangelogManager {
     }
 
     private String getDayName(int dayOfWeek) {
+        if (messageManager == null) {
+            return switch (dayOfWeek) {
+                case Calendar.MONDAY -> "Monday";
+                case Calendar.TUESDAY -> "Tuesday";
+                case Calendar.WEDNESDAY -> "Wednesday";
+                case Calendar.THURSDAY -> "Thursday";
+                case Calendar.FRIDAY -> "Friday";
+                case Calendar.SATURDAY -> "Saturday";
+                case Calendar.SUNDAY -> "Sunday";
+                default -> "Day";
+            };
+        }
+        
         return switch (dayOfWeek) {
-            case Calendar.MONDAY -> "Monday";
-            case Calendar.TUESDAY -> "Tuesday";
-            case Calendar.WEDNESDAY -> "Wednesday";
-            case Calendar.THURSDAY -> "Thursday";
-            case Calendar.FRIDAY -> "Friday";
-            case Calendar.SATURDAY -> "Saturday";
-            case Calendar.SUNDAY -> "Sunday";
+            case Calendar.MONDAY -> messageManager.getMessage("dates.monday");
+            case Calendar.TUESDAY -> messageManager.getMessage("dates.tuesday");
+            case Calendar.WEDNESDAY -> messageManager.getMessage("dates.wednesday");
+            case Calendar.THURSDAY -> messageManager.getMessage("dates.thursday");
+            case Calendar.FRIDAY -> messageManager.getMessage("dates.friday");
+            case Calendar.SATURDAY -> messageManager.getMessage("dates.saturday");
+            case Calendar.SUNDAY -> messageManager.getMessage("dates.sunday");
             default -> "Day";
         };
     }
@@ -402,6 +419,14 @@ public class ChangelogManager {
     private boolean isSameDay(Calendar cal1, Calendar cal2) {
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
+    }
+    
+    /**
+     * Sets the MessageManager for date formatting translations
+     * @param messageManager the MessageManager instance
+     */
+    public void setMessageManager(MessageManager messageManager) {
+        this.messageManager = messageManager;
     }
     
     public void shutdown() {
