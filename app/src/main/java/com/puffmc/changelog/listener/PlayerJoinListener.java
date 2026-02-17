@@ -45,80 +45,77 @@ public class PlayerJoinListener implements Listener {
         
         if (autoOpenEnabled) {
             // Auto-open mode: open book directly if there are new entries
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (player.isOnline()) {
-                        int newChanges = changelogManager.getNewEntriesCount(player);
-                        plugin.debug(player.getName() + " has " + newChanges + " new changelog entries");
-                        
-                        if (newChanges > 0) {
-                            // Open the changelog book directly using the command handler
-                            // This bypasses permission checks and opens the book directly
-                            plugin.debug("Auto-opening changelog book for " + player.getName());
-                            plugin.getCommand("changelog").getExecutor()
-                                .onCommand(player, plugin.getCommand("changelog"), "changelog", new String[]{"show"});
-                        }
-                    }
+            // ✅ FIX #11: Use runTaskLater instead of BukkitRunnable for cleanup
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                // ✅ FIX: Verify player is still online to prevent race condition crashes
+                if (!player.isOnline()) {
+                    plugin.debug("Player " + player.getName() + " disconnected before auto-open could execute");
+                    return;
                 }
-            }.runTaskLater(plugin, autoOpenDelayTicks);
+                
+                int newChanges = changelogManager.getNewEntriesCount(player);
+                plugin.debug(player.getName() + " has " + newChanges + " new changelog entries");
+                
+                if (newChanges > 0) {
+                    // Open the changelog book directly - must be on main thread
+                    plugin.debug("Auto-opening changelog book for " + player.getName());
+                    plugin.getCommand("changelog").getExecutor()
+                        .onCommand(player, plugin.getCommand("changelog"), "changelog", new String[]{"show"});
+                }
+            }, autoOpenDelayTicks);
         } else {
             // Notification mode: show clickable message
             long notificationDelay = plugin.getConfig().getLong("notification-delay", 60L);
             
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (player.isOnline()) {
-                        int newChanges = changelogManager.getNewEntriesCount(player);
+            // ✅ FIX #11: Use runTaskLater instead of BukkitRunnable
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (player.isOnline()) {
+                    int newChanges = changelogManager.getNewEntriesCount(player);
+                    
+                    if (newChanges > 0) {
+                        // First message
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("count", String.valueOf(newChanges));
+                        String message = messageManager.getMessage("messages.new_entries_count", placeholders);
+                        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
                         
-                        if (newChanges > 0) {
-                            // First message
-                            Map<String, String> placeholders = new HashMap<>();
-                            placeholders.put("count", String.valueOf(newChanges));
-                            String message = messageManager.getMessage("messages.new_entries_count", placeholders);
-                            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
-                            
-                            // Clickable message
-                            TextComponent clickableMessage = new TextComponent(
-                                    ChatColor.GOLD + "/changelog " +
-                                    ChatColor.GRAY + "- " +
-                                    ChatColor.GOLD + messageManager.getMessage("messages.click_to_view"));
-                            
-                            clickableMessage.setHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT, 
-                                    new ComponentBuilder(messageManager.getMessage("messages.click_to_view")).create()));
-                            
-                            clickableMessage.setClickEvent(new ClickEvent(
-                                    ClickEvent.Action.RUN_COMMAND, 
-                                    "/changelog"));
-                            
-                            player.spigot().sendMessage(clickableMessage);
-                        }
+                        // Clickable message
+                        TextComponent clickableMessage = new TextComponent(
+                                ChatColor.GOLD + "/changelog " +
+                                ChatColor.GRAY + "- " +
+                                ChatColor.GOLD + messageManager.getMessage("messages.click_to_view"));
+                        
+                        clickableMessage.setHoverEvent(new HoverEvent(
+                                HoverEvent.Action.SHOW_TEXT, 
+                                new ComponentBuilder(messageManager.getMessage("messages.click_to_view")).create()));
+                        
+                        clickableMessage.setClickEvent(new ClickEvent(
+                                ClickEvent.Action.RUN_COMMAND, 
+                                "/changelog"));
+                        
+                        player.spigot().sendMessage(clickableMessage);
                     }
                 }
-            }.runTaskLater(plugin, notificationDelay);
+            }, notificationDelay);
         }
         
         // Check for plugin updates (separate from changelog notifications)
         if (plugin.getConfig().getBoolean("update-checker.notify-on-join", true)) {
             // Delay update notification by 10 seconds (200 ticks) after join
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (player.isOnline() && (player.hasPermission("changelogbook.update.notify") || player.isOp())) {
-                        if (updateChecker.isUpdateAvailable()) {
-                            TextComponent updateNotification = ComponentUtil.createUpdateNotification(
-                                messageManager,
-                                updateChecker.getCurrentVersion(),
-                                updateChecker.getLatestVersion(),
-                                updateChecker.getDownloadUrl()
-                            );
-                            player.spigot().sendMessage(updateNotification);
-                        }
+            // ✅ FIX #11: Use runTaskLater instead of BukkitRunnable
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (player.isOnline() && (player.hasPermission("changelogbook.update.notify") || player.isOp())) {
+                    if (updateChecker.isUpdateAvailable()) {
+                        TextComponent updateNotification = ComponentUtil.createUpdateNotification(
+                            messageManager,
+                            updateChecker.getCurrentVersion(),
+                            updateChecker.getLatestVersion(),
+                            updateChecker.getDownloadUrl()
+                        );
+                        player.spigot().sendMessage(updateNotification);
                     }
                 }
-            }.runTaskLater(plugin, 200L); // 10 seconds delay
+            }, 200L); // 10 seconds delay
         }
     }
 }

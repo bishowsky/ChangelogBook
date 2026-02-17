@@ -53,6 +53,20 @@ public class ChangelogTabCompleter implements TabCompleter {
             String subcommand = args[0].toLowerCase();
 
             switch (subcommand) {
+                case "add":
+                    if (args.length == 2) {
+                        // Complete category names
+                        var categoriesSection = plugin.getConfig().getConfigurationSection("categories");
+                        if (categoriesSection != null) {
+                            completions.addAll(categoriesSection.getKeys(false).stream()
+                                    .filter(category -> categoriesSection.getBoolean(category + ".enabled", false))
+                                    .filter(category -> category.toLowerCase().startsWith(args[1].toLowerCase()))
+                                    .sorted()
+                                    .collect(Collectors.toList()));
+                        }
+                    }
+                    break;
+
                 case "edit":
                 case "delete":
                     if (args.length == 2) {

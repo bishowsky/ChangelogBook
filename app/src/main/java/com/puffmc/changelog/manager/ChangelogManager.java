@@ -18,6 +18,8 @@ public class ChangelogManager {
     private final List<ChangelogEntry> entries = new ArrayList<>();
     private final DatabaseManager databaseManager;
     private MessageManager messageManager;
+    // ✅ FIX #10: Cache for display numbers to avoid O(n log n) on every call
+    private final Map<String, String> displayNumberCache = new HashMap<>();
 
     public ChangelogManager(ChangelogPlugin plugin) {
         this.plugin = plugin;
@@ -41,20 +43,31 @@ public class ChangelogManager {
      */
     private void loadFromDatabase() {
         plugin.debug("Loading changelog data from MySQL...");
-        entries.clear();
-        lastSeenMap.clear();
         
-        entries.addAll(databaseManager.loadEntries());
-        plugin.debug("Loaded " + entries.size() + " changelog entries from database");
+        // ✅ FIX #5: Thread-safe database loading
+        // Load to temporary collections first
+        List<ChangelogEntry> loadedEntries = databaseManager.loadEntries();
+        Map<UUID, Long> loadedLastSeen = new HashMap<>();
         
         for (DatabaseManager.PlayerLastSeen lastSeen : databaseManager.loadLastSeen()) {
             try {
                 UUID uuid = UUID.fromString(lastSeen.getUuid());
-                lastSeenMap.put(uuid, lastSeen.getTimestamp());
+                loadedLastSeen.put(uuid, lastSeen.getTimestamp());
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("Invalid UUID in database: " + lastSeen.getUuid());
             }
         }
+        
+        // Atomic replacement - synchronized to prevent concurrent modification
+        synchronized (this) {
+            entries.clear();
+            entries.addAll(loadedEntries);
+            lastSeenMap.clear();
+            lastSeenMap.putAll(loadedLastSeen);
+            displayNumberCache.clear(); // Invalidate cache
+        }
+        
+        plugin.debug("Loaded " + entries.size() + " changelog entries from database");
         plugin.debug("Loaded " + lastSeenMap.size() + " player last-seen records from database");
     }
 
@@ -83,9 +96,10 @@ public class ChangelogManager {
                     String author = entrySection.getString("author", "Unknown");
                     long timestamp = entrySection.getLong("timestamp", System.currentTimeMillis());
                     boolean deleted = entrySection.getBoolean("deleted", false);
+                    String category = entrySection.getString("category", null);
                     
                     if (!deleted) {
-                        ChangelogEntry entry = new ChangelogEntry(id, content, author, timestamp);
+                        ChangelogEntry entry = new ChangelogEntry(id, content, author, timestamp, category);
                         entries.add(entry);
                     }
                 }
@@ -144,6 +158,7 @@ public class ChangelogManager {
                 data.set(path + ".author", entry.getAuthor());
                 data.set(path + ".timestamp", entry.getTimestamp());
                 data.set(path + ".deleted", entry.isDeleted());
+                data.set(path + ".category", entry.getCategory());
             }
             
             // Save last seen timestamps
@@ -174,17 +189,42 @@ public class ChangelogManager {
      * @return The created entry
      */
     public ChangelogEntry addEntry(String content, String author) {
-        ChangelogEntry entry = new ChangelogEntry(content, author, System.currentTimeMillis());
-        plugin.debug("Adding new changelog entry by " + author + ": " + content.substring(0, Math.min(50, content.length())));
+        return addEntry(content, author, null);
+    }
+
+    /**
+     * Adds a new changelog entry with category
+     * @param content The content of the entry
+     * @param author The author of the entry
+     * @param category The category of the entry (optional, can be null)
+     * @return The created entry
+     */
+    public ChangelogEntry addEntry(String content, String author, String category) {
+        ChangelogEntry entry = new ChangelogEntry(content, author, System.currentTimeMillis(), category);
+        plugin.debug("Adding new changelog entry by " + author + " [" + (category != null ? category : "no category") + "]: " + content.substring(0, Math.min(50, content.length())));
         
         if (databaseManager.isUsingMySQL()) {
-            // Async database save
+            // ✅ FIX #2: Race condition - add to memory ONLY after successful DB save (Critical)
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     try {
-                        databaseManager.addEntry(entry);
-                        plugin.debug("Changelog entry saved to database: " + entry.getId());
+                        boolean success = databaseManager.addEntry(entry);
+                        
+                        if (success) {
+                            // Add to memory only if DB save succeeded
+                            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                                synchronized (ChangelogManager.this) {
+                                    entries.add(0, entry);
+                                    displayNumberCache.clear(); // Invalidate cache
+                                }
+                                plugin.debug("Entry added to memory after successful DB save: " + entry.getId());
+                            });
+                        } else {
+                            plugin.getLogger().severe("Failed to add entry to database: " + entry.getId());
+                            // Notify admin on next login or via console
+                            plugin.getLogger().severe("Entry content: " + entry.getContent().substring(0, Math.min(100, entry.getContent().length())));
+                        }
                     } catch (Exception e) {
                         plugin.getLogger().severe("Error adding entry to database: " + e.getMessage());
                         if (plugin.isDebugMode()) {
@@ -194,10 +234,14 @@ public class ChangelogManager {
                 }
             }.runTaskAsynchronously(plugin);
         } else {
+            // YAML mode - add immediately
+            synchronized (this) {
+                entries.add(0, entry);
+                displayNumberCache.clear();
+            }
             saveData();
         }
         
-        entries.add(0, entry);
         return entry;
     }
 
@@ -229,6 +273,9 @@ public class ChangelogManager {
                 } else {
                     saveData();
                 }
+                
+                // Invalidate display number cache
+                displayNumberCache.clear();
                 
                 return true;
             }
@@ -264,6 +311,9 @@ public class ChangelogManager {
                     saveData();
                 }
                 
+                // Invalidate display number cache
+                displayNumberCache.clear();
+                
                 return true;
             }
         }
@@ -287,16 +337,19 @@ public class ChangelogManager {
      * @return The display number string (e.g., "#1")
      */
     public String getEntryDisplayNumber(ChangelogEntry entry) {
-        List<ChangelogEntry> activeEntries = entries.stream()
-                .filter(e -> !e.isDeleted())
-                .sorted((e1, e2) -> Long.compare(e1.getTimestamp(), e2.getTimestamp()))
-                .toList();
-        
-        int index = activeEntries.indexOf(entry);
-        if (index >= 0) {
-            return "#" + (index + 1);
-        }
-        return "#?";
+        // ✅ FIX #10: Use cache to avoid O(n log n) sorting on every call
+        return displayNumberCache.computeIfAbsent(entry.getId(), id -> {
+            List<ChangelogEntry> activeEntries = entries.stream()
+                    .filter(e -> !e.isDeleted())
+                    .sorted((e1, e2) -> Long.compare(e1.getTimestamp(), e2.getTimestamp()))
+                    .toList();
+            
+            int index = activeEntries.indexOf(entry);
+            if (index >= 0) {
+                return "#" + (index + 1);
+            }
+            return "#?";
+        });
     }
 
     /**

@@ -13,6 +13,65 @@ auto-open:
   # Delay in seconds before opening the book (e.g., 3 = wait 3 seconds after join)
   delay-seconds: 3
 
+# Category System - fully customizable categories for changelog entries
+# Usage: /changelog add [category] <content>
+# Example: /changelog add fix Fixed critical bug
+# 
+# You can create unlimited custom categories with any ID you want!
+# Each category can have:
+#   - name: Display name shown in Discord and messages
+#   - icon: Emoji or symbol shown in book
+#   - color: Minecraft color code (&a, &e, &c, etc.) for book display
+#   - discord-color: Hex color for Discord embeds (e.g., "FF5733")
+#   - enabled: Set to false to disable the category
+#
+# Built-in categories (can be customized or removed):
+categories:
+  fix:
+    name: "Fixed"
+    icon: "✔"
+    color: "&e"  # Yellow
+    discord-color: "FEE75C"  # Discord yellow
+    enabled: true
+  added:
+    name: "Added"
+    icon: "🟢"
+    color: "&a"  # Green
+    discord-color: "57F287"  # Discord green
+    enabled: true
+  removed:
+    name: "Removed"
+    icon: "➖"
+    color: "&c"  # Red
+    discord-color: "ED4245"  # Discord red
+    enabled: true
+  # Example custom categories (uncomment to use):
+  # event:
+  #   name: "Event"
+  #   icon: "🎪"
+  #   color: "&d"  # Light purple
+  #   discord-color: "EB459E"  # Pink
+  #   enabled: true
+  # security:
+  #   name: "Security"
+  #   icon: "🔒"
+  #   color: "&4"  # Dark red
+  #   discord-color: "992D22"  # Dark red
+  #   enabled: true
+  # performance:
+  #   name: "Performance"
+  #   icon: "⚡"
+  #   color: "&6"  # Gold
+  #   discord-color: "F1C40F"  # Yellow-gold
+  #   enabled: true
+
+# First Page Customization - customize the first page of the changelog book
+first-page:
+  title: "⚒ Changelog ⚒"
+  separator: "━━━━━━━━━━━━━━━━━━"
+  description: "Server changelog"
+  footer: "Scroll to view changes"
+
 # MySQL Database Configuration
 mysql:
   enabled: false
@@ -22,8 +81,23 @@ mysql:
   username: root
   password: "change_me"
   table-prefix: changelog_
+  # HikariCP Connection Pool Settings
+  pool:
+    maximum-size: 10           # Maximum number of connections in pool
+    minimum-idle: 2            # Minimum number of idle connections
+    connection-timeout: 10000  # Connection timeout in milliseconds
+    idle-timeout: 600000       # Idle timeout (10 minutes)
+    max-lifetime: 1800000      # Max connection lifetime (30 minutes)
   # Multi-server database synchronization (planned feature)
   sync: false
+
+# Database Maintenance
+database:
+  # Auto-prune soft-deleted entries older than X days
+  # 0 = disabled, >0 = enabled
+  prune-deleted-after-days: 30
+  # Prune on plugin startup (in addition to auto-prune)
+  prune-on-startup: true
 
 # Reward System Configuration
 rewards:
@@ -52,6 +126,17 @@ rewards:
       max-days: 30
       command: "say %player% received gold reward!"
 
+# Discord Integration Configuration
+discord:
+  # Enable Discord webhook notifications
+  enabled: false
+  # Discord webhook URL (get from Server Settings -> Integrations -> Webhooks)
+  webhook-url: "https://discord.com/api/webhooks/..."
+  # Notify when new changelog entry is added
+  notify-on-add: true
+  # Mention a role when posting (e.g., "@everyone", "@here", "<@&ROLE_ID>", or "none")
+  mention-role: "none"
+
 # Update Checker Configuration
 update-checker:
   # Enable checking for plugin updates from GitHub
@@ -62,6 +147,13 @@ update-checker:
   github-repo: "bishowsky/ChangelogBook"
   # Notify players with permission on join
   notify-on-join: true
+
+# Content Validation Limits
+limits:
+  # Maximum changelog entry length (characters)
+  max-content-length: 5000
+  # Minimum changelog entry length (characters)
+  min-content-length: 3
 
 # Debug mode - set to true for verbose logging
 debug: false

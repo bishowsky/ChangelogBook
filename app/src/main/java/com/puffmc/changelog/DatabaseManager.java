@@ -65,11 +65,13 @@ public class DatabaseManager {
             config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true&serverTimezone=UTC");
             config.setUsername(username);
             config.setPassword(password);
-            config.setMaximumPoolSize(5);
-            config.setMinimumIdle(1);
-            config.setConnectionTimeout(10000);
-            config.setIdleTimeout(600000);
-            config.setMaxLifetime(1800000);
+            
+            // ✅ FIX #6: Configurable connection pool settings
+            config.setMaximumPoolSize(plugin.getConfig().getInt("mysql.pool.maximum-size", 10));
+            config.setMinimumIdle(plugin.getConfig().getInt("mysql.pool.minimum-idle", 2));
+            config.setConnectionTimeout(plugin.getConfig().getLong("mysql.pool.connection-timeout", 10000));
+            config.setIdleTimeout(plugin.getConfig().getLong("mysql.pool.idle-timeout", 600000));
+            config.setMaxLifetime(plugin.getConfig().getLong("mysql.pool.max-lifetime", 1800000));
 
             dataSource = new HikariDataSource(config);
             
@@ -102,8 +104,17 @@ public class DatabaseManager {
                     "timestamp BIGINT NOT NULL, " +
                     "deleted TINYINT DEFAULT 0, " +
                     "created_at BIGINT NOT NULL, " +
-                    "modified_at BIGINT NOT NULL" +
+                    "modified_at BIGINT NOT NULL, " +
+                    "category VARCHAR(20)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            
+            // Migrate existing tables: add category column if it doesn't exist
+            try {
+                statement.executeUpdate("ALTER TABLE " + entriesTable + " ADD COLUMN IF NOT EXISTS category VARCHAR(20)");
+            } catch (SQLException e) {
+                // Column might already exist, ignore
+                plugin.debug("Category column already exists or migration skipped");
+            }
             
             // Create last seen table
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + lastSeenTable + " (" +
@@ -118,20 +129,47 @@ public class DatabaseManager {
                     "timestamp BIGINT NOT NULL, " +
                     "PRIMARY KEY (uuid, reward_type)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            
+            // ✅ FIX: Create indexes for better query performance
+            // Index on timestamp for sorting entries by date (DESC for newest first)
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_timestamp ON " + entriesTable + " (timestamp DESC)");
+            
+            // Index on deleted flag for faster filtering of active entries
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_deleted ON " + entriesTable + " (deleted)");
+            
+            // Composite index for efficient queries on non-deleted entries sorted by timestamp
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_deleted_timestamp ON " + entriesTable + " (deleted, timestamp DESC)");
+            
+            // Index on author for filtering by author
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_author ON " + entriesTable + " (author)");
+            
+            // Index on category for filtering by category
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_category ON " + entriesTable + " (category)");
 
-            plugin.getLogger().info("Database tables initialized successfully!");
+            plugin.getLogger().info("Database tables and indexes initialized successfully!");
         }
     }
 
     /**
      * Gets a connection from the pool
      * @return Connection from HikariCP pool
+     * @throws SQLException if connection cannot be obtained
      */
     private Connection getConnection() throws SQLException {
         if (dataSource == null || dataSource.isClosed()) {
             throw new SQLException("Connection pool is not initialized");
         }
-        return dataSource.getConnection();
+        
+        try {
+            return dataSource.getConnection();
+        } catch (SQLException e) {
+            // ✅ FIX: Better error handling for connection pool exhaustion
+            if (e.getMessage() != null && e.getMessage().contains("Connection is not available")) {
+                plugin.getLogger().warning("Connection pool exhausted! Consider increasing maximum-pool-size in config.yml");
+                plugin.getLogger().warning("Current pool size: " + dataSource.getHikariPoolMXBean().getTotalConnections());
+            }
+            throw e;
+        }
     }
 
     /**
@@ -164,8 +202,9 @@ public class DatabaseManager {
                 String content = resultSet.getString("content");
                 String author = resultSet.getString("author");
                 long timestamp = resultSet.getLong("timestamp");
+                String category = resultSet.getString("category");
                 
-                ChangelogEntry entry = new ChangelogEntry(id, content, author, timestamp);
+                ChangelogEntry entry = new ChangelogEntry(id, content, author, timestamp, category);
                 entry.setCreatedAt(resultSet.getLong("created_at"));
                 entry.setModifiedAt(resultSet.getLong("modified_at"));
                 entries.add(entry);
@@ -189,7 +228,7 @@ public class DatabaseManager {
         
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO " + entriesTable + " (id, content, author, timestamp, deleted, created_at, modified_at) VALUES (?, ?, ?, ?, 0, ?, ?)")) {
+                "INSERT INTO " + entriesTable + " (id, content, author, timestamp, deleted, created_at, modified_at, category) VALUES (?, ?, ?, ?, 0, ?, ?, ?)")) {
             
             statement.setString(1, entry.getId());
             statement.setString(2, entry.getContent());
@@ -197,6 +236,7 @@ public class DatabaseManager {
             statement.setLong(4, entry.getTimestamp());
             statement.setLong(5, entry.getCreatedAt());
             statement.setLong(6, entry.getModifiedAt());
+            statement.setString(7, entry.getCategory());
             
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -432,6 +472,36 @@ public class DatabaseManager {
      */
     public boolean isUsingMySQL() {
         return useMySQL;
+    }
+    
+    /**
+     * ✅ FIX #3: Garbage collection for soft-deleted entries (Critical)
+     * Permanently deletes soft-deleted entries older than specified days
+     * @param daysOld Entries older than this many days will be deleted
+     * @return Number of deleted entries
+     */
+    public int pruneOldDeletedEntries(int daysOld) {
+        if (!useMySQL) {
+            return 0;
+        }
+        
+        long cutoffTimestamp = System.currentTimeMillis() - (daysOld * 24L * 60L * 60L * 1000L);
+        
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                "DELETE FROM " + entriesTable + " WHERE deleted = 1 AND modified_at < ?")) {
+            
+            statement.setLong(1, cutoffTimestamp);
+            int deleted = statement.executeUpdate();
+            
+            if (deleted > 0) {
+                plugin.getLogger().info("Pruned " + deleted + " old deleted entries (older than " + daysOld + " days)");
+            }
+            return deleted;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Error pruning old deleted entries", e);
+            return 0;
+        }
     }
 
     /**

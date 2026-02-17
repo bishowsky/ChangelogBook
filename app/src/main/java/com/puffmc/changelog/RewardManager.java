@@ -1,16 +1,23 @@
 package com.puffmc.changelog;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class RewardManager {
     private final ChangelogPlugin plugin;
-    private final Map<String, Map<String, Long>> playerCooldowns = new HashMap<>();
+    // ✅ FIX: Use Caffeine Cache to prevent memory leak from inactive players
+    // Cache automatically expires entries after 30 days of no access
+    private final Cache<String, Map<String, Long>> playerCooldowns = Caffeine.newBuilder()
+            .expireAfterAccess(30, TimeUnit.DAYS)
+            .maximumSize(10000) // Limit to 10,000 players
+            .build();
     private DatabaseManager databaseManager;
 
     public RewardManager(ChangelogPlugin plugin) {
@@ -35,11 +42,11 @@ public class RewardManager {
     public boolean canClaimReward(Player player, String rewardType) {
         String uuid = player.getUniqueId().toString();
         
-        if (!playerCooldowns.containsKey(uuid)) {
+        Map<String, Long> cooldowns = playerCooldowns.getIfPresent(uuid);
+        if (cooldowns == null) {
             return true;
         }
 
-        Map<String, Long> cooldowns = playerCooldowns.get(uuid);
         if (!cooldowns.containsKey(rewardType)) {
             return true;
         }
@@ -60,11 +67,12 @@ public class RewardManager {
     public long getRemainingCooldownHours(Player player, String rewardType) {
         String uuid = player.getUniqueId().toString();
         
-        if (!playerCooldowns.containsKey(uuid) || !playerCooldowns.get(uuid).containsKey(rewardType)) {
+        Map<String, Long> cooldowns = playerCooldowns.getIfPresent(uuid);
+        if (cooldowns == null || !cooldowns.containsKey(rewardType)) {
             return 0;
         }
 
-        long lastClaimTime = playerCooldowns.get(uuid).get(rewardType);
+        long lastClaimTime = cooldowns.get(rewardType);
         long cooldownMillis = getCooldownHours(rewardType) * 3600000L;
         long currentTime = System.currentTimeMillis();
         long elapsed = currentTime - lastClaimTime;
@@ -100,10 +108,12 @@ public class RewardManager {
         String uuid = player.getUniqueId().toString();
         long timestamp = System.currentTimeMillis();
         
-        if (!playerCooldowns.containsKey(uuid)) {
-            playerCooldowns.put(uuid, new HashMap<>());
+        Map<String, Long> cooldowns = playerCooldowns.getIfPresent(uuid);
+        if (cooldowns == null) {
+            cooldowns = new HashMap<>();
+            playerCooldowns.put(uuid, cooldowns);
         }
-        playerCooldowns.get(uuid).put(rewardType, timestamp);
+        cooldowns.put(rewardType, timestamp);
         plugin.debug("Set cooldown for " + player.getName() + " on " + rewardType + " reward");
         
         // Save to database/YAML
@@ -181,12 +191,13 @@ public class RewardManager {
      * Loads cooldowns from database or YAML
      */
     public void loadCooldowns() {
-        playerCooldowns.clear();
+        playerCooldowns.invalidateAll();
         
         if (databaseManager != null && databaseManager.isUsingMySQL()) {
             // Load from MySQL
-            playerCooldowns.putAll(databaseManager.loadCooldowns());
-            plugin.getLogger().info("Loaded " + playerCooldowns.size() + " reward cooldowns from database");
+            Map<String, Map<String, Long>> loaded = databaseManager.loadCooldowns();
+            playerCooldowns.putAll(loaded);
+            plugin.getLogger().info("Loaded " + loaded.size() + " reward cooldowns from database");
         } else {
             // Load from YAML
             loadCooldownsFromYaml();
@@ -200,6 +211,7 @@ public class RewardManager {
         var data = plugin.getDataConfig();
         var cooldownsSection = data.getConfigurationSection("cooldowns");
         
+        int count = 0;
         if (cooldownsSection != null) {
             for (String uuid : cooldownsSection.getKeys(false)) {
                 var playerSection = cooldownsSection.getConfigurationSection(uuid);
@@ -209,9 +221,10 @@ public class RewardManager {
                         rewards.put(rewardType, playerSection.getLong(rewardType));
                     }
                     playerCooldowns.put(uuid, rewards);
+                    count++;
                 }
             }
-            plugin.getLogger().info("Loaded " + playerCooldowns.size() + " reward cooldowns from YAML");
+            plugin.getLogger().info("Loaded " + count + " reward cooldowns from YAML");
         }
     }
     
@@ -241,7 +254,7 @@ public class RewardManager {
         var data = plugin.getDataConfig();
         data.set("cooldowns", null);
         
-        for (var entry : playerCooldowns.entrySet()) {
+        for (var entry : playerCooldowns.asMap().entrySet()) {
             String uuid = entry.getKey();
             for (var reward : entry.getValue().entrySet()) {
                 data.set("cooldowns." + uuid + "." + reward.getKey(), reward.getValue());

@@ -19,15 +19,18 @@ import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class ChangelogCommand implements CommandExecutor {
     private final ChangelogPlugin plugin;
@@ -147,20 +150,77 @@ public class ChangelogCommand implements CommandExecutor {
             return true;
         }
 
+        // Check if first argument is a valid category
+        String category = null;
+        int contentStartIndex = 1;
+        
+        // Get enabled categories from config
+        Set<String> enabledCategories = getEnabledCategories();
+        
+        // Check if first argument matches a category
+        if (enabledCategories.contains(args[1].toLowerCase())) {
+            category = args[1].toLowerCase();
+            contentStartIndex = 2;
+            
+            // Ensure there's content after the category
+            if (args.length < 3) {
+                sender.sendMessage(messageManager.getMessage("commands.add_usage"));
+                return true;
+            }
+        }
+
+        // Build content from remaining arguments
         StringBuilder content = new StringBuilder();
-        for (int i = 1; i < args.length; i++) {
+        for (int i = contentStartIndex; i < args.length; i++) {
             content.append(args[i]).append(" ");
+        }
+        
+        // ✅ FIX #1: Validate content length and emptiness (Critical)
+        String finalContent = content.toString().trim();
+        
+        // Check if empty
+        if (finalContent.isEmpty()) {
+            sender.sendMessage(messageManager.getMessage("errors.empty_content"));
+            return true;
+        }
+        
+        // Get limits from config
+        int maxLength = plugin.getConfig().getInt("limits.max-content-length", 5000);
+        int minLength = plugin.getConfig().getInt("limits.min-content-length", 3);
+        
+        // Check minimum length
+        if (finalContent.length() < minLength) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("min", String.valueOf(minLength));
+            placeholders.put("current", String.valueOf(finalContent.length()));
+            sender.sendMessage(messageManager.getMessage("errors.content_too_short", placeholders));
+            return true;
+        }
+        
+        // Check maximum length (DoS protection)
+        if (finalContent.length() > maxLength) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("max", String.valueOf(maxLength));
+            placeholders.put("current", String.valueOf(finalContent.length()));
+            sender.sendMessage(messageManager.getMessage("errors.content_too_long", placeholders));
+            return true;
         }
 
         String authorName = (sender instanceof Player) ? ((Player) sender).getName() : sender.getName();
-        ChangelogEntry entry = changelogManager.addEntry(content.toString().trim(), authorName);
+        ChangelogEntry entry = changelogManager.addEntry(finalContent, authorName, category);
 
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("number", changelogManager.getEntryDisplayNumber(entry));
         sender.sendMessage(messageManager.getMessage("messages.entry_added", placeholders));
         
         // Log the action
-        plugin.getLogManager().info("Changelog entry added by " + authorName + ": " + entry.getId());
+        String categoryInfo = category != null ? " [" + category + "]" : "";
+        plugin.getLogManager().info("Changelog entry added by " + authorName + categoryInfo + ": " + entry.getId());
+        
+        // Send Discord notification
+        if (plugin.getDiscordWebhook() != null && plugin.getDiscordWebhook().isEnabled()) {
+            plugin.getDiscordWebhook().sendChangelogNotification(entry, authorName);
+        }
         
         broadcastChangelogNotification();
         return true;
@@ -416,6 +476,90 @@ public class ChangelogCommand implements CommandExecutor {
         return true;
     }
 
+    /**
+     * Gets the set of enabled category names from config
+     * @return Set of lowercase category names that are enabled
+     */
+    private Set<String> getEnabledCategories() {
+        Set<String> categories = new HashSet<>();
+        ConfigurationSection categoriesSection = plugin.getConfig().getConfigurationSection("categories");
+        
+        if (categoriesSection != null) {
+            for (String categoryName : categoriesSection.getKeys(false)) {
+                boolean enabled = categoriesSection.getBoolean(categoryName + ".enabled", false);
+                if (enabled) {
+                    categories.add(categoryName.toLowerCase());
+                }
+            }
+        }
+        
+        return categories;
+    }
+
+    /**
+     * Gets the icon for a category from config
+     * @param category The category name
+     * @return The icon string, or null if not found
+     */
+    private String getCategoryIcon(String category) {
+        if (category == null || category.isEmpty()) {
+            return null;
+        }
+        
+        ConfigurationSection categoriesSection = plugin.getConfig().getConfigurationSection("categories");
+        if (categoriesSection != null) {
+            String icon = categoriesSection.getString(category.toLowerCase() + ".icon", null);
+            if (icon != null && !icon.isEmpty()) {
+                return icon;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Gets the color for a category from config
+     * @param category The category name
+     * @return The color code string (e.g., "&a"), or empty string if not found
+     */
+    private String getCategoryColor(String category) {
+        if (category == null || category.isEmpty()) {
+            return "";
+        }
+        
+        ConfigurationSection categoriesSection = plugin.getConfig().getConfigurationSection("categories");
+        if (categoriesSection != null) {
+            String color = categoriesSection.getString(category.toLowerCase() + ".color", "");
+            if (color != null && !color.isEmpty()) {
+                return ChatColor.translateAlternateColorCodes('&', color);
+            }
+        }
+        
+        return "";
+    }
+
+    /**
+     * Gets the display name for a category from config
+     * @param category The category name
+     * @return The display name, or capitalized category name if not found
+     */
+    private String getCategoryDisplayName(String category) {
+        if (category == null || category.isEmpty()) {
+            return "";
+        }
+        
+        ConfigurationSection categoriesSection = plugin.getConfig().getConfigurationSection("categories");
+        if (categoriesSection != null) {
+            String name = categoriesSection.getString(category.toLowerCase() + ".name", "");
+            if (name != null && !name.isEmpty()) {
+                return name;
+            }
+        }
+        
+        // Fallback: capitalize first letter
+        return category.substring(0, 1).toUpperCase() + category.substring(1);
+    }
+
     private void broadcastChangelogNotification() {
         TextComponent message = new TextComponent(ChatColor.GRAY + "[" + 
                                                  ChatColor.YELLOW + "Changelog" + 
@@ -472,10 +616,16 @@ public class ChangelogCommand implements CommandExecutor {
         
         int newChangesCount = changelogManager.getNewEntriesCount(player);
         
+        // Build first page using config values with fallback to language file
+        String firstPageTitle = plugin.getConfig().getString("first-page.title", messageManager.getMessage("book.first_page_title"));
+        String firstPageSeparator = plugin.getConfig().getString("first-page.separator", messageManager.getMessage("book.first_page_separator"));
+        String firstPageDescription = plugin.getConfig().getString("first-page.description", messageManager.getMessage("book.first_page_subtitle"));
+        String firstPageFooter = plugin.getConfig().getString("first-page.footer", messageManager.getMessage("book.first_page_scroll"));
+        
         StringBuilder titlePage = new StringBuilder();
-        titlePage.append(ChatColor.DARK_RED).append(messageManager.getMessage("book.first_page_title")).append("\n\n");
-        titlePage.append(ChatColor.DARK_GRAY).append("━━━━━━━━━━━━━━━━━━\n\n");
-        titlePage.append(ChatColor.BLACK).append(messageManager.getMessage("book.first_page_subtitle")).append("\n\n");
+        titlePage.append(ChatColor.DARK_RED).append(firstPageTitle).append("\n\n");
+        titlePage.append(ChatColor.DARK_GRAY).append(firstPageSeparator).append("\n\n");
+        titlePage.append(ChatColor.BLACK).append(firstPageDescription).append("\n\n");
         titlePage.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.first_page_total"));
         titlePage.append(ChatColor.DARK_AQUA).append(entries.size()).append("\n");
         titlePage.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.first_page_new"));
@@ -487,8 +637,8 @@ public class ChangelogCommand implements CommandExecutor {
         }
         
         titlePage.append("\n\n");
-        titlePage.append(ChatColor.DARK_GRAY).append("━━━━━━━━━━━━━━━━━━\n\n");
-        titlePage.append(ChatColor.GOLD).append(messageManager.getMessage("book.first_page_scroll"));
+        titlePage.append(ChatColor.DARK_GRAY).append(firstPageSeparator).append("\n\n");
+        titlePage.append(ChatColor.GOLD).append(firstPageFooter);
         
         pages.add(titlePage.toString());
         
@@ -502,7 +652,26 @@ public class ChangelogCommand implements CommandExecutor {
             page.append(ChatColor.DARK_BLUE).append(messageManager.getMessage("book.entry_author_prefix")).append(entry.getAuthor());
             page.append(" ").append(ChatColor.GOLD).append(changelogManager.getEntryDisplayNumber(entry));
             page.append("\n\n");
-            page.append(ColorUtil.formatText(entry.getContent()));
+            
+            // ✅ Add category icon and color if entry has a category
+            String content = entry.getContent();
+            if (entry.getCategory() != null && !entry.getCategory().isEmpty()) {
+                String categoryColor = getCategoryColor(entry.getCategory());
+                String categoryIcon = getCategoryIcon(entry.getCategory());
+                
+                if (categoryColor != null && !categoryColor.isEmpty()) {
+                    page.append(categoryColor);
+                }
+                
+                if (categoryIcon != null && !categoryIcon.isEmpty()) {
+                    page.append(categoryIcon).append(" ");
+                }
+                
+                // Reset color after icon
+                page.append(ChatColor.RESET);
+            }
+            
+            page.append(ColorUtil.formatText(content));
             
             pages.add(page.toString());
             

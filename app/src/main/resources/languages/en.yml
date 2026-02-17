@@ -18,7 +18,7 @@ commands:
   reload: "&6/changelog reload &7- Reload configuration"
   reload_success: "&aConfiguration reloaded successfully"
   reload_permission: "&cYou don't have permission to reload the configuration"
-  add_usage: "&cUsage: /changelog add <content>"
+  add_usage: "&cUsage: /changelog add [category] <content>"
   edit_usage: "&cUsage: /changelog edit <id> <content>"
   delete_usage: "&cUsage: /changelog delete <id>"
   give_usage: "&cUsage: /changelog give <player> <rewardType>"
@@ -34,6 +34,10 @@ messages:
   entry_added: "&aNew changelog entry added (%number%)"
   entry_updated: "&aChangelog entry updated (%number%)"
   entry_deleted: "&aChangelog entry deleted (%number%)"
+  category_invalid: "&cInvalid category: %category%"
+  available_categories: "&7Available categories: %categories%"
+  discord_sent: "&aChangelog posted to Discord!"
+  discord_failed: "&cFailed to post to Discord. Check console for details."
 
 dates:
   today: "Today"
@@ -63,6 +67,10 @@ errors:
   invalid_syntax: "&cInvalid syntax. Type &6/changelog help &cfor more information"
   entry_not_found: "&cChangelog entry not found with ID: %id%"
   cooldown_active: "&cYou must wait &e%hours% &chours before claiming another reward"
+  empty_content: "&cYou cannot add an empty changelog entry!"
+  content_too_short: "&cChangelog entry is too short! Minimum: &e%min% &ccharacters, yours: &e%current%"
+  content_too_long: "&cChangelog entry is too long! Maximum: &e%max% &ccharacters, yours: &e%current%"
+  database_save_failed: "&cFailed to save changelog entry to database. Please contact an administrator."
 
 update:
   available: "&6New version available: &e%new_version% &7(Current: %current_version%)"
@@ -105,5 +113,6 @@ book:
   first_page_total: "➤ Total: "
   first_page_new: "➤ New: "
   first_page_scroll: "Scroll to view changes"
+  first_page_separator: "━━━━━━━━━━━━━━━━━━"
   entry_date_prefix: "📅 "
   entry_author_prefix: "👤 "

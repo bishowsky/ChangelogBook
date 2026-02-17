@@ -18,7 +18,7 @@ commands:
   reload: "&6/changelog reload &7- Przeładuj konfigurację"
   reload_success: "&aKonfiguracja pomyślnie przeładowana"
   reload_permission: "&cNie masz uprawnień do przeładowania konfiguracji"
-  add_usage: "&cUżycie: /changelog add <treść>"
+  add_usage: "&cUżycie: /changelog add [kategoria] <treść>"
   edit_usage: "&cUżycie: /changelog edit <id> <treść>"
   delete_usage: "&cUżycie: /changelog delete <id>"
   give_usage: "&cUżycie: /changelog give <gracz> <typNagrody>"
@@ -34,6 +34,10 @@ messages:
   entry_added: "&aDodano nowy wpis w dzienniku zmian (%number%)"
   entry_updated: "&aAktualizowano wpis w dzienniku zmian (%number%)"
   entry_deleted: "&aUsunięto wpis z dziennika zmian (%number%)"
+  category_invalid: "&cNieprawidłowa kategoria: %category%"
+  available_categories: "&7Dostępne kategorie: %categories%"
+  discord_sent: "&aWpis opublikowany na Discordzie!"
+  discord_failed: "&cNie udało się opublikować na Discordzie. Sprawdź konsolę."
 
 dates:
   today: "Dzisiaj"
@@ -63,6 +67,10 @@ errors:
   invalid_syntax: "&cNieprawidłowa składnia. Wpisz &6/changelog help &caby uzyskać więcej informacji"
   entry_not_found: "&cWpis w dzienniku zmian nie znaleziony (ID: %id%)"
   cooldown_active: "&cMusisz czekać &e%hours% &cgodzin przed odebraniem kolejnej nagrody"
+  empty_content: "&cNie możesz dodać pustego wpisu w dzienniku zmian!"
+  content_too_short: "&cWpis w dzienniku zmian jest za krótki! Minimalnie: &e%min% &cznaków, twój: &e%current%"
+  content_too_long: "&cWpis w dzienniku zmian jest za długi! Maksymalnie: &e%max% &cznaków, twój: &e%current%"
+  database_save_failed: "&cNie udało się zapisać wpisu do bazy danych. Skontaktuj się z administratorem."
 
 update:
   available: "&6Dostępna nowa wersja: &e%new_version% &7(Obecna: %current_version%)"
@@ -105,5 +113,6 @@ book:
   first_page_total: "➤ Łącznie: "
   first_page_new: "➤ Nowe: "
   first_page_scroll: "Przewiń, aby zobaczyć zmiany"
+  first_page_separator: "━━━━━━━━━━━━━━━━━━"
   entry_date_prefix: "📅 "
   entry_author_prefix: "👤 "

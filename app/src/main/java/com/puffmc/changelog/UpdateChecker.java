@@ -23,6 +23,7 @@ public class UpdateChecker {
     private String latestVersion;
     private String downloadUrl;
     private long lastCheckTime;
+    // ✅ FIX #7: Remove final from cacheTime to allow reload
     private long cacheTime;
     private boolean updateAvailable;
 
@@ -52,6 +53,9 @@ public class UpdateChecker {
         if (!config.getBoolean("update-checker.enabled", true)) {
             return;
         }
+        
+        // ✅ FIX #7: Refresh cache time from config on each check (allows reload)
+        cacheTime = config.getLong("update-checker.check-interval-hours", 6) * 3600000L;
 
         // Return cached result if still valid
         if (!forceRefresh && (System.currentTimeMillis() - lastCheckTime) < cacheTime) {
@@ -108,8 +112,25 @@ public class UpdateChecker {
                 }
                 
             } else if (responseCode == 403) {
-                // Rate limit exceeded
-                logManager.log(Level.WARNING, "GitHub API rate limit exceeded. Update check skipped.");
+                // ✅ FIX: Enhanced rate limit handling with reset time
+                String rateLimitReset = connection.getHeaderField("X-RateLimit-Reset");
+                String rateLimitRemaining = connection.getHeaderField("X-RateLimit-Remaining");
+                
+                if (rateLimitReset != null) {
+                    try {
+                        long resetTime = Long.parseLong(rateLimitReset) * 1000L;
+                        long minutesUntilReset = (resetTime - System.currentTimeMillis()) / 60000L;
+                        logManager.log(Level.WARNING, "GitHub API rate limit exceeded. Resets in " + minutesUntilReset + " minutes.");
+                    } catch (NumberFormatException e) {
+                        logManager.log(Level.WARNING, "GitHub API rate limit exceeded. Update check skipped.");
+                    }
+                } else {
+                    logManager.log(Level.WARNING, "GitHub API rate limit exceeded. Update check skipped.");
+                }
+                
+                if (rateLimitRemaining != null && rateLimitRemaining.equals("0")) {
+                    logManager.log(Level.INFO, "API calls remaining: 0. Consider increasing check-interval-hours in config.yml");
+                }
             } else {
                 logManager.log(Level.WARNING, "Failed to check for updates. HTTP response code: " + responseCode);
             }

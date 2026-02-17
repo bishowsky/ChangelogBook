@@ -10,6 +10,7 @@ public class ChangelogEntry {
     private boolean deleted;
     private long createdAt;
     private long modifiedAt;
+    private String category;  // Optional category (fix/added/removed/etc.)
 
     // Constructor for existing entries
     public ChangelogEntry(String id, String content, String author, long timestamp) {
@@ -20,6 +21,19 @@ public class ChangelogEntry {
         this.deleted = false;
         this.createdAt = timestamp;
         this.modifiedAt = timestamp;
+        this.category = null;
+    }
+
+    // Constructor for existing entries with category
+    public ChangelogEntry(String id, String content, String author, long timestamp, String category) {
+        this.id = id;
+        this.content = content;
+        this.author = author;
+        this.timestamp = timestamp;
+        this.deleted = false;
+        this.createdAt = timestamp;
+        this.modifiedAt = timestamp;
+        this.category = category;
     }
 
     // Constructor for new entries (generates UUID)
@@ -31,6 +45,19 @@ public class ChangelogEntry {
         this.deleted = false;
         this.createdAt = timestamp;
         this.modifiedAt = timestamp;
+        this.category = null;
+    }
+
+    // Constructor for new entries with category
+    public ChangelogEntry(String content, String author, long timestamp, String category) {
+        this.id = UUID.randomUUID().toString();
+        this.content = content;
+        this.author = author;
+        this.timestamp = timestamp;
+        this.deleted = false;
+        this.createdAt = timestamp;
+        this.modifiedAt = timestamp;
+        this.category = category;
     }
 
     public String getId() {
@@ -78,6 +105,14 @@ public class ChangelogEntry {
         this.modifiedAt = modifiedAt;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     @Override
     public String toString() {
         return "ChangelogEntry{" +
@@ -85,6 +120,7 @@ public class ChangelogEntry {
                 ", author='" + author + '\'' +
                 ", timestamp=" + timestamp +
                 ", deleted=" + deleted +
+                ", category='" + category + '\'' +
                 '}';
     }
 }

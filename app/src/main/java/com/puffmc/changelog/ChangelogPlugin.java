@@ -22,6 +22,7 @@ public class ChangelogPlugin extends JavaPlugin {
     private DatabaseManager databaseManager;
     private LogManager logManager;
     private UpdateChecker updateChecker;
+    private DiscordWebhook discordWebhook;
     private boolean debugMode = false;
 
     @Override
@@ -39,18 +40,28 @@ public class ChangelogPlugin extends JavaPlugin {
         messageManager = new MessageManager(this, language);
         logManager.info("Loaded language: " + language);
         
-        // Initialize DatabaseManager
+        // Initialize DatabaseManager and managers
         databaseManager = new DatabaseManager(this);
-        if (!databaseManager.connect()) {
-            getLogger().warning("Failed to connect to database, falling back to YAML storage");
-            logManager.warning("Failed to connect to MySQL database, using YAML storage");
-        } else {
-            logManager.info("Successfully connected to MySQL database");
-        }
-        
-        // Initialize managers
         changelogManager = new ChangelogManager(this);
         rewardManager = new RewardManager(this);
+        
+        // ✅ FIX: Async database connection to prevent server lag on startup
+        if (getConfig().getBoolean("mysql.enabled", false)) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                if (!databaseManager.connect()) {
+                    getLogger().warning("Failed to connect to database, falling back to YAML storage");
+                    logManager.warning("Failed to connect to MySQL database, using YAML storage");
+                } else {
+                    logManager.info("Successfully connected to MySQL database");
+                    // Load data from database after successful connection
+                    changelogManager.loadData();
+                    rewardManager.loadCooldowns();
+                }
+            });
+        } else {
+            // YAML mode - load immediately
+            changelogManager.loadData();
+        }
         
         // Set MessageManager for ChangelogManager (for date translations)
         changelogManager.setMessageManager(messageManager);
@@ -60,6 +71,12 @@ public class ChangelogPlugin extends JavaPlugin {
         
         // Initialize UpdateChecker
         updateChecker = new UpdateChecker(this, getConfig(), logManager);
+        
+        // Initialize Discord Webhook
+        discordWebhook = new DiscordWebhook(this);
+        if (discordWebhook.isEnabled()) {
+            logManager.info("Discord webhook integration enabled");
+        }
         
         // Start initial update check after 30 seconds (600 ticks)
         new BukkitRunnable() {
@@ -79,6 +96,35 @@ public class ChangelogPlugin extends JavaPlugin {
                 updateChecker.checkForUpdates();
             }
         }.runTaskTimerAsynchronously(this, 600L, checkIntervalTicks);
+        
+        // ✅ FIX #3: Auto-prune old deleted entries (garbage collection)
+        int pruneDays = getConfig().getInt("database.prune-deleted-after-days", 30);
+        boolean pruneOnStartup = getConfig().getBoolean("database.prune-on-startup", true);
+        
+        if (pruneDays > 0 && getConfig().getBoolean("mysql.enabled", false)) {
+            // Prune on startup if enabled
+            if (pruneOnStartup) {
+                getServer().getScheduler().runTaskLaterAsynchronously(this, () -> {
+                    int pruned = databaseManager.pruneOldDeletedEntries(pruneDays);
+                    if (pruned > 0) {
+                        logManager.info("Startup prune: Removed " + pruned + " old deleted entries");
+                    }
+                }, 1200L); // 1 minute after startup
+            }
+            
+            // Schedule auto-prune every 24 hours
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    int pruned = databaseManager.pruneOldDeletedEntries(pruneDays);
+                    if (pruned > 0) {
+                        logManager.info("Auto-prune: Removed " + pruned + " old deleted entries");
+                    }
+                }
+            }.runTaskTimerAsynchronously(this, 72000L, 1728000L); // 1h start delay, 24h interval
+            
+            logManager.info("Auto-prune enabled: Deleted entries older than " + pruneDays + " days will be removed");
+        }
         
         // Register commands
         ChangelogCommand command = new ChangelogCommand(this, changelogManager, messageManager, rewardManager, updateChecker);
@@ -200,6 +246,14 @@ public class ChangelogPlugin extends JavaPlugin {
      */
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
+    }
+
+    /**
+     * Gets the Discord webhook manager
+     * @return DiscordWebhook instance
+     */
+    public DiscordWebhook getDiscordWebhook() {
+        return discordWebhook;
     }
 
     /**
