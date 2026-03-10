@@ -39,10 +39,10 @@ tasks {
         relocate("com.zaxxer.hikari", "pl.puffmc.changelog.libs.hikari")
         relocate("com.github.benmanes.caffeine", "pl.puffmc.changelog.libs.caffeine")
         
-        // Minimize - remove unused classes, but keep MySQL driver and Caffeine intact
-        // Caffeine uses reflection to load internal cache implementations (SSMSA, etc.)
+        // Minimize - remove unused classes, but keep drivers and caches that use reflection intact
         minimize {
             exclude(dependency("mysql:mysql-connector-java:.*"))
+            exclude(dependency("com.zaxxer:HikariCP:.*"))
             exclude(dependency("com.github.ben-manes.caffeine:.*"))
         }
     }

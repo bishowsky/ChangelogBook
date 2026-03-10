@@ -105,12 +105,12 @@ public class DatabaseManager {
                     "deleted TINYINT DEFAULT 0, " +
                     "created_at BIGINT NOT NULL, " +
                     "modified_at BIGINT NOT NULL, " +
-                    "category VARCHAR(20)" +
+                    "category VARCHAR(64)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
             
             // Migrate existing tables: add category column if it doesn't exist
             try {
-                statement.executeUpdate("ALTER TABLE " + entriesTable + " ADD COLUMN IF NOT EXISTS category VARCHAR(20)");
+                statement.executeUpdate("ALTER TABLE " + entriesTable + " ADD COLUMN IF NOT EXISTS category VARCHAR(64)");
             } catch (SQLException e) {
                 // Column might already exist, ignore
                 plugin.debug("Category column already exists or migration skipped");

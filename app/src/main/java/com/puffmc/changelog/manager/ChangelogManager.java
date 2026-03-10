@@ -21,10 +21,10 @@ public class ChangelogManager {
     // ✅ FIX #10: Cache for display numbers to avoid O(n log n) on every call
     private final Map<String, String> displayNumberCache = new HashMap<>();
 
-    public ChangelogManager(ChangelogPlugin plugin) {
+    public ChangelogManager(ChangelogPlugin plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
-        this.databaseManager = new DatabaseManager(plugin);
-        loadData();
+        this.databaseManager = databaseManager;
+        // Note: loadData() is called explicitly from ChangelogPlugin after DB connects
     }
 
     /**
@@ -147,12 +147,20 @@ public class ChangelogManager {
      * @param synchronous If true, saves synchronously (used during shutdown)
      */
     private void saveToYaml(boolean synchronous) {
+        // Snapshot under lock so the async writer never sees concurrent modification
+        final List<ChangelogEntry> snapshot;
+        final Map<UUID, Long> lastSeenSnapshot;
+        synchronized (this) {
+            snapshot = new ArrayList<>(entries);
+            lastSeenSnapshot = new HashMap<>(lastSeenMap);
+        }
+
         Runnable saveTask = () -> {
             FileConfiguration data = plugin.getDataConfig();
             
             // Save entries
             data.set("entries", null);
-            for (ChangelogEntry entry : entries) {
+            for (ChangelogEntry entry : snapshot) {
                 String path = "entries." + entry.getId();
                 data.set(path + ".content", entry.getContent());
                 data.set(path + ".author", entry.getAuthor());
@@ -163,7 +171,7 @@ public class ChangelogManager {
             
             // Save last seen timestamps
             data.set("last_seen", null);
-            for (Map.Entry<UUID, Long> entry : lastSeenMap.entrySet()) {
+            for (Map.Entry<UUID, Long> entry : lastSeenSnapshot.entrySet()) {
                 data.set("last_seen." + entry.getKey().toString(), entry.getValue());
             }
             
@@ -325,9 +333,11 @@ public class ChangelogManager {
      * @return List of entries
      */
     public List<ChangelogEntry> getEntries() {
-        return new ArrayList<>(entries.stream()
-                .filter(e -> !e.isDeleted())
-                .toList());
+        synchronized (this) {
+            return entries.stream()
+                    .filter(e -> !e.isDeleted())
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
     }
 
     /**

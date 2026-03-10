@@ -1,0 +1,32 @@
+# =====================================
+# ChangelogBook - Discord Embed Settings
+# =====================================
+# Customize every part of the Discord embed sent on new changelog entries.
+# Supports plain text and Discord markdown (e.g. **bold**, *italic*).
+
+embed:
+  # Title shown at the top of the embed
+  title: "📋 New Changelog Entry"
+
+  # Name of the "Author" inline field
+  author-field: "👤 Author"
+
+  # Name of the "Date" inline field
+  date-field: "📅 Date"
+
+  # Footer text at the bottom of the embed
+  footer: "ChangelogBook • Server Update"
+
+# =====================================
+# Category Colors
+# =====================================
+# Hex color for each category embed (overrides per-category discord-color in config.yml).
+# Use 6-digit hex without '#', e.g. "57F287".
+# The "default" color is used when the entry has no category.
+category-colors:
+  added:   "57F287"   # Green
+  fix:     "FEE75C"   # Yellow
+  fixed:   "FEE75C"   # Yellow
+  removed: "ED4245"   # Red
+  changed: "5865F2"   # Blurple
+  default: "5865F2"   # Blurple (fallback)

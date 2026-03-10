@@ -11,6 +11,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class ChangelogPlugin extends JavaPlugin {
     private File configFile;
@@ -23,6 +26,8 @@ public class ChangelogPlugin extends JavaPlugin {
     private LogManager logManager;
     private UpdateChecker updateChecker;
     private DiscordWebhook discordWebhook;
+    private File discordConfigFile;
+    private FileConfiguration discordConfig;
     private boolean debugMode = false;
 
     @Override
@@ -30,6 +35,7 @@ public class ChangelogPlugin extends JavaPlugin {
         // Create config and data files
         saveDefaultConfig();
         setupDataFile();
+        setupDiscordConfig();
         
         // Initialize LogManager
         logManager = new LogManager(this);
@@ -40,17 +46,26 @@ public class ChangelogPlugin extends JavaPlugin {
         messageManager = new MessageManager(this, language);
         logManager.info("Loaded language: " + language);
         
-        // Initialize DatabaseManager and managers
+        // Initialize DatabaseManager — single shared instance used by all managers
         databaseManager = new DatabaseManager(this);
-        changelogManager = new ChangelogManager(this);
+        // Pass the shared DatabaseManager so ChangelogManager never creates its own
+        changelogManager = new ChangelogManager(this, databaseManager);
         rewardManager = new RewardManager(this);
         
-        // ✅ FIX: Async database connection to prevent server lag on startup
+        // Set MessageManager for ChangelogManager (for date translations)
+        changelogManager.setMessageManager(messageManager);
+        
+        // Set database manager for reward manager (for cooldown persistence)
+        rewardManager.setDatabaseManager(databaseManager);
+
+        // Async database connection — loadData() is called only after successful connect
         if (getConfig().getBoolean("mysql.enabled", false)) {
             getServer().getScheduler().runTaskAsynchronously(this, () -> {
                 if (!databaseManager.connect()) {
                     getLogger().warning("Failed to connect to database, falling back to YAML storage");
                     logManager.warning("Failed to connect to MySQL database, using YAML storage");
+                    // Fall back to YAML on the main thread
+                    getServer().getScheduler().runTask(this, () -> changelogManager.loadData());
                 } else {
                     logManager.info("Successfully connected to MySQL database");
                     // Load data from database after successful connection
@@ -59,15 +74,10 @@ public class ChangelogPlugin extends JavaPlugin {
                 }
             });
         } else {
-            // YAML mode - load immediately
+            // YAML mode — connect (no-op) then load immediately
+            databaseManager.connect();
             changelogManager.loadData();
         }
-        
-        // Set MessageManager for ChangelogManager (for date translations)
-        changelogManager.setMessageManager(messageManager);
-        
-        // Set database manager for reward manager (for cooldown persistence)
-        rewardManager.setDatabaseManager(databaseManager);
         
         // Initialize UpdateChecker
         updateChecker = new UpdateChecker(this, getConfig(), logManager);
@@ -158,6 +168,34 @@ public class ChangelogPlugin extends JavaPlugin {
     }
     
     /**
+     * Sets up and loads the discord.yml file, extracting the default from the JAR if absent.
+     */
+    private void setupDiscordConfig() {
+        discordConfigFile = new File(getDataFolder(), "discord.yml");
+        if (!discordConfigFile.exists()) {
+            try {
+                InputStream in = getResource("discord.yml");
+                if (in != null) {
+                    discordConfigFile.getParentFile().mkdirs();
+                    Files.copy(in, discordConfigFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    in.close();
+                }
+            } catch (IOException e) {
+                getLogger().warning("Could not extract discord.yml: " + e.getMessage());
+            }
+        }
+        discordConfig = YamlConfiguration.loadConfiguration(discordConfigFile);
+    }
+
+    /**
+     * Gets the discord.yml configuration
+     * @return FileConfiguration for discord.yml
+     */
+    public FileConfiguration getDiscordConfig() {
+        return discordConfig;
+    }
+
+    /**
      * Sets up the data.yml file
      */
     private void setupDataFile() {
@@ -187,6 +225,8 @@ public class ChangelogPlugin extends JavaPlugin {
         if (messageManager != null) {
             messageManager.reload();
         }
+        // Reload discord config
+        setupDiscordConfig();
     }
     
     /**

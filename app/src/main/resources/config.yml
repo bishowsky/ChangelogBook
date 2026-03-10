@@ -22,28 +22,26 @@ auto-open:
 #   - name: Display name shown in Discord and messages
 #   - icon: Emoji or symbol shown in book
 #   - color: Minecraft color code (&a, &e, &c, etc.) for book display
-#   - discord-color: Hex color for Discord embeds (e.g., "FF5733")
 #   - enabled: Set to false to disable the category
+#
+# Discord embed colors are configured in discord.yml (category-colors section).
 #
 # Built-in categories (can be customized or removed):
 categories:
   fix:
     name: "Fixed"
     icon: "✔"
-    color: "&e"  # Yellow
-    discord-color: "FEE75C"  # Discord yellow
+    color: "&6"  # Gold
     enabled: true
   added:
     name: "Added"
     icon: "🟢"
     color: "&a"  # Green
-    discord-color: "57F287"  # Discord green
     enabled: true
   removed:
     name: "Removed"
     icon: "➖"
     color: "&c"  # Red
-    discord-color: "ED4245"  # Discord red
     enabled: true
   # Example custom categories (uncomment to use):
   # event:

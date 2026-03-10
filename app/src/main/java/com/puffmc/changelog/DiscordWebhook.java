@@ -17,40 +17,43 @@ import java.util.logging.Level;
  */
 public class DiscordWebhook {
     private final ChangelogPlugin plugin;
-    private final String webhookUrl;
-    private final boolean enabled;
-    private final String mentionRole;
-    private final boolean notifyOnAdd;
 
     public DiscordWebhook(ChangelogPlugin plugin) {
         this.plugin = plugin;
-        this.enabled = plugin.getConfig().getBoolean("discord.enabled", false);
-        this.webhookUrl = plugin.getConfig().getString("discord.webhook-url", "");
-        this.mentionRole = plugin.getConfig().getString("discord.mention-role", "");
-        this.notifyOnAdd = plugin.getConfig().getBoolean("discord.notify-on-add", true);
+    }
+
+    // --- Config accessors: always read live values so reload works correctly ---
+
+    private boolean isDiscordEnabled() {
+        return plugin.getConfig().getBoolean("discord.enabled", false);
+    }
+
+    private String getWebhookUrl() {
+        return plugin.getConfig().getString("discord.webhook-url", "");
+    }
+
+    private String getMentionRole() {
+        return plugin.getConfig().getString("discord.mention-role", "");
+    }
+
+    private boolean isNotifyOnAdd() {
+        return plugin.getConfig().getBoolean("discord.notify-on-add", true);
     }
 
     /**
      * Checks if Discord webhook is enabled and configured
      */
     public boolean isEnabled() {
-        // ✅ FIX #8: Proper Discord webhook URL validation
-        if (!enabled || webhookUrl == null || webhookUrl.isEmpty()) {
+        if (!isDiscordEnabled()) return false;
+        String url = getWebhookUrl();
+        if (url == null || url.isEmpty() || url.equals("https://discord.com/api/webhooks/...")) {
             return false;
         }
-        
-        // Check if it's the placeholder
-        if (webhookUrl.equals("https://discord.com/api/webhooks/...")) {
-            return false;
-        }
-        
-        // Validate URL format
         try {
-            new java.net.URL(webhookUrl);
-            // Verify it's a Discord webhook URL
-            if (!webhookUrl.startsWith("https://discord.com/api/webhooks/") && 
-                !webhookUrl.startsWith("https://discordapp.com/api/webhooks/")) {
-                plugin.getLogger().warning("Invalid Discord webhook URL format (must start with https://discord.com/api/webhooks/)");
+            new java.net.URL(url);
+            if (!url.startsWith("https://discord.com/api/webhooks/") &&
+                !url.startsWith("https://discordapp.com/api/webhooks/")) {
+                plugin.getLogger().warning("Invalid Discord webhook URL (must start with https://discord.com/api/webhooks/)");
                 return false;
             }
             return true;
@@ -66,7 +69,7 @@ public class DiscordWebhook {
      * @param author The author name
      */
     public void sendChangelogNotification(ChangelogEntry entry, String author) {
-        if (!isEnabled() || !notifyOnAdd) {
+        if (!isEnabled() || !isNotifyOnAdd()) {
             return;
         }
 
@@ -92,13 +95,15 @@ public class DiscordWebhook {
         JsonObject payload = new JsonObject();
         
         // Add mention if configured
+        String mentionRole = getMentionRole();
         if (mentionRole != null && !mentionRole.isEmpty() && !mentionRole.equals("none")) {
             payload.addProperty("content", mentionRole);
         }
 
         // Build embed
         JsonObject embed = new JsonObject();
-        embed.addProperty("title", "📋 New Changelog Entry");
+        String title = plugin.getDiscordConfig().getString("embed.title", "📋 New Changelog Entry");
+        embed.addProperty("title", title);
         
         // Strip minecraft color codes for Discord
         String cleanContent = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', entry.getContent()));
@@ -126,15 +131,17 @@ public class DiscordWebhook {
         JsonArray fields = new JsonArray();
         
         // Author field
+        String authorFieldName = plugin.getDiscordConfig().getString("embed.author-field", "👤 Author");
         JsonObject authorField = new JsonObject();
-        authorField.addProperty("name", "👤 Author");
+        authorField.addProperty("name", authorFieldName);
         authorField.addProperty("value", author);
         authorField.addProperty("inline", true);
         fields.add(authorField);
         
         // Timestamp field
+        String dateFieldName = plugin.getDiscordConfig().getString("embed.date-field", "📅 Date");
         JsonObject timestampField = new JsonObject();
-        timestampField.addProperty("name", "📅 Date");
+        timestampField.addProperty("name", dateFieldName);
         timestampField.addProperty("value", formatTimestamp(entry.getTimestamp()));
         timestampField.addProperty("inline", true);
         fields.add(timestampField);
@@ -142,8 +149,9 @@ public class DiscordWebhook {
         embed.add("fields", fields);
         
         // Footer
+        String footerText = plugin.getDiscordConfig().getString("embed.footer", "ChangelogBook • Server Update");
         JsonObject footer = new JsonObject();
-        footer.addProperty("text", "ChangelogBook • Server Update");
+        footer.addProperty("text", footerText);
         embed.add("footer", footer);
         
         // Timestamp
@@ -163,7 +171,7 @@ public class DiscordWebhook {
         // ✅ FIX #4: Resource leak - use try-finally to ensure connection cleanup
         HttpURLConnection connection = null;
         try {
-            URL url = new URL(webhookUrl);
+            URL url = new URL(getWebhookUrl());
             connection = (HttpURLConnection) url.openConnection();
             
             connection.setRequestMethod("POST");
@@ -198,37 +206,38 @@ public class DiscordWebhook {
     }
 
     /**
-     * Gets Discord color code for category
+     * Gets Discord color code for category.
+     * Colors are configured in discord.yml under category-colors.
      */
     private int getCategoryDiscordColor(String category) {
-        if (category == null || category.isEmpty()) {
-            return 0x5865F2; // Discord blurple (default)
-        }
-        
-        // Get color from config
-        String colorCode = plugin.getConfig().getString("categories." + category.toLowerCase() + ".discord-color", "");
-        
-        if (!colorCode.isEmpty()) {
-            try {
-                // Support hex colors (e.g., "#FF5733" or "FF5733")
-                if (colorCode.startsWith("#")) {
-                    colorCode = colorCode.substring(1);
-                }
-                return Integer.parseInt(colorCode, 16);
-            } catch (NumberFormatException e) {
-                plugin.debug("Invalid discord-color for category " + category + ": " + colorCode);
+        // 1. Check discord.yml category-colors section
+        if (category != null && !category.isEmpty()) {
+            String discordYmlColor = plugin.getDiscordConfig().getString("category-colors." + category.toLowerCase(), "");
+            if (!discordYmlColor.isEmpty()) {
+                try {
+                    return Integer.parseInt(discordYmlColor, 16);
+                } catch (NumberFormatException ignored) {}
             }
         }
-        
-        // Fallback colors based on category name
-        return switch (category.toLowerCase()) {
-            case "fix", "fixed" -> 0xFEE75C; // Yellow
-            case "added", "add", "new" -> 0x57F287; // Green
-            case "removed", "remove", "deleted" -> 0xED4245; // Red
-            case "changed", "change" -> 0x5865F2; // Blurple
-            case "security" -> 0xEB459E; // Pink
-            default -> 0x99AAB5; // Gray
-        };
+
+        // 2. Built-in fallback colors
+        if (category != null) {
+            switch (category.toLowerCase()) {
+                case "fix": case "fixed": return 0xFEE75C;   // Yellow
+                case "added": case "add": case "new": return 0x57F287; // Green
+                case "removed": case "remove": case "deleted": return 0xED4245; // Red
+                case "changed": case "change": return 0x5865F2; // Blurple
+                case "security": return 0xEB459E; // Pink
+            }
+        }
+
+        // 3. Default color from discord.yml
+        String defaultColor = plugin.getDiscordConfig().getString("category-colors.default", "5865F2");
+        try {
+            return Integer.parseInt(defaultColor, 16);
+        } catch (NumberFormatException e) {
+            return 0x5865F2;
+        }
     }
 
     /**
