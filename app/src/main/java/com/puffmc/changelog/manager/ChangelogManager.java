@@ -260,32 +260,32 @@ public class ChangelogManager {
      * @return true if successful
      */
     public boolean editEntry(String id, String content) {
-        for (ChangelogEntry entry : entries) {
-            if (entry.getId().equals(id) && !entry.isDeleted()) {
-                entry.setContent(content);
-                
-                if (databaseManager.isUsingMySQL()) {
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                databaseManager.updateEntry(id, content);
-                            } catch (Exception e) {
-                                plugin.getLogger().severe("Error updating entry in database: " + e.getMessage());
-                                if (plugin.isDebugMode()) {
-                                    e.printStackTrace();
+        synchronized (this) {
+            for (ChangelogEntry entry : entries) {
+                if (entry.getId().equals(id) && !entry.isDeleted()) {
+                    entry.setContent(content);
+
+                    if (databaseManager.isUsingMySQL()) {
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    databaseManager.updateEntry(id, content);
+                                } catch (Exception e) {
+                                    plugin.getLogger().severe("Error updating entry in database: " + e.getMessage());
+                                    if (plugin.isDebugMode()) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
-                        }
-                    }.runTaskAsynchronously(plugin);
-                } else {
-                    saveData();
+                        }.runTaskAsynchronously(plugin);
+                    } else {
+                        saveData();
+                    }
+
+                    displayNumberCache.clear();
+                    return true;
                 }
-                
-                // Invalidate display number cache
-                displayNumberCache.clear();
-                
-                return true;
             }
         }
         return false;
@@ -297,32 +297,34 @@ public class ChangelogManager {
      * @return true if successful
      */
     public boolean removeEntry(String id) {
-        for (ChangelogEntry entry : entries) {
-            if (entry.getId().equals(id) && !entry.isDeleted()) {
-                entry.setDeleted(true);
-                
-                if (databaseManager.isUsingMySQL()) {
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                databaseManager.removeEntry(id);
-                            } catch (Exception e) {
-                                plugin.getLogger().severe("Error removing entry from database: " + e.getMessage());
-                                if (plugin.isDebugMode()) {
-                                    e.printStackTrace();
+        synchronized (this) {
+            java.util.Iterator<ChangelogEntry> iter = entries.iterator();
+            while (iter.hasNext()) {
+                ChangelogEntry entry = iter.next();
+                if (entry.getId().equals(id) && !entry.isDeleted()) {
+                    iter.remove();
+                    displayNumberCache.clear();
+
+                    if (databaseManager.isUsingMySQL()) {
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    databaseManager.removeEntry(id);
+                                } catch (Exception e) {
+                                    plugin.getLogger().severe("Error removing entry from database: " + e.getMessage());
+                                    if (plugin.isDebugMode()) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
-                        }
-                    }.runTaskAsynchronously(plugin);
-                } else {
-                    saveData();
+                        }.runTaskAsynchronously(plugin);
+                    } else {
+                        saveData();
+                    }
+
+                    return true;
                 }
-                
-                // Invalidate display number cache
-                displayNumberCache.clear();
-                
-                return true;
             }
         }
         return false;

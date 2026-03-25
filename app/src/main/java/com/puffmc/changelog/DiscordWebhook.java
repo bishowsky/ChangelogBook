@@ -155,7 +155,9 @@ public class DiscordWebhook {
         embed.add("footer", footer);
         
         // Timestamp
-        embed.addProperty("timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(new Date(entry.getTimestamp())));
+        SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        isoFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        embed.addProperty("timestamp", isoFormat.format(new Date(entry.getTimestamp())));
         
         JsonArray embeds = new JsonArray();
         embeds.add(embed);

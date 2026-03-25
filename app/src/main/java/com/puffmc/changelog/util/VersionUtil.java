@@ -95,20 +95,22 @@ public class VersionUtil {
      * @return server type (e.g., "Paper", "Spigot", "Purpur", "Folia", "Unknown")
      */
     public static String getServerType() {
+        String name = Bukkit.getName().toLowerCase();
         String version = Bukkit.getVersion().toLowerCase();
-        
-        if (version.contains("paper")) {
-            return "Paper";
-        } else if (version.contains("purpur")) {
-            return "Purpur";
-        } else if (version.contains("folia")) {
+        String combined = name + " " + version;
+
+        if (combined.contains("folia")) {
             return "Folia";
-        } else if (version.contains("spigot")) {
+        } else if (combined.contains("purpur")) {
+            return "Purpur";
+        } else if (combined.contains("paper")) {
+            return "Paper";
+        } else if (combined.contains("spigot")) {
             return "Spigot";
-        } else if (version.contains("craftbukkit")) {
+        } else if (combined.contains("craftbukkit")) {
             return "CraftBukkit";
         }
-        
+
         return "Unknown";
     }
 

@@ -1,7 +1,7 @@
 name: ChangelogBook
 version: '${version}'
 main: com.puffmc.changelog.ChangelogPlugin
-api-version: '1.21'
+api-version: '1.20'
 authors: [Bishyy]
 description: Plugin displaying changelog to players with multi-language support
 commands:

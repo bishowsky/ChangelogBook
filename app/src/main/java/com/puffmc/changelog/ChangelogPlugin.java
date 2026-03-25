@@ -88,15 +88,7 @@ public class ChangelogPlugin extends JavaPlugin {
             logManager.info("Discord webhook integration enabled");
         }
         
-        // Start initial update check after 30 seconds (600 ticks)
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                updateChecker.checkForUpdates();
-            }
-        }.runTaskLaterAsynchronously(this, 600L);
-        
-        // Schedule periodic update checks
+        // Schedule periodic update checks (first check fires after 30 seconds / 600 ticks)
         long checkIntervalHours = getConfig().getLong("update-checker.check-interval-hours", 6);
         long checkIntervalTicks = checkIntervalHours * 72000L; // Convert hours to ticks (1 hour = 72000 ticks)
         

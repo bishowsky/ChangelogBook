@@ -331,6 +331,7 @@ public class ChangelogCommand implements CommandExecutor {
 
     private boolean handleReloadCommand(CommandSender sender) {
         plugin.reloadConfig();
+        messageManager.reload();
         changelogManager.loadData();
         
         sender.sendMessage(messageManager.getMessage("commands.reload_success"));

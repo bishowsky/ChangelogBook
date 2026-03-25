@@ -20,12 +20,12 @@ public class UpdateChecker {
     private final FileConfiguration config;
     private final LogManager logManager;
     
-    private String latestVersion;
-    private String downloadUrl;
-    private long lastCheckTime;
+    private volatile String latestVersion;
+    private volatile String downloadUrl;
+    private volatile long lastCheckTime;
     // ✅ FIX #7: Remove final from cacheTime to allow reload
     private long cacheTime;
-    private boolean updateAvailable;
+    private volatile boolean updateAvailable;
 
     public UpdateChecker(Plugin plugin, FileConfiguration config, LogManager logManager) {
         this.plugin = plugin;
@@ -65,9 +65,10 @@ public class UpdateChecker {
         String repo = config.getString("update-checker.github-repo", "bishowsky/ChangelogBook");
         String apiUrl = "https://api.github.com/repos/" + repo + "/releases/latest";
 
+        HttpURLConnection connection = null;
         try {
             URL url = new URL(apiUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
@@ -77,14 +78,13 @@ public class UpdateChecker {
             int responseCode = connection.getResponseCode();
             
             if (responseCode == 200) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 StringBuilder response = new StringBuilder();
-                String line;
-                
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
                 }
-                reader.close();
 
                 // Parse JSON response
                 JsonObject jsonObject = JsonParser.parseString(response.toString()).getAsJsonObject();
@@ -135,11 +135,13 @@ public class UpdateChecker {
                 logManager.log(Level.WARNING, "Failed to check for updates. HTTP response code: " + responseCode);
             }
             
-            connection.disconnect();
-            
         } catch (Exception e) {
             if (config.getBoolean("debug", false)) {
                 logManager.log(Level.SEVERE, "Error checking for updates: " + e.getMessage());
+            }
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
             }
         }
     }
