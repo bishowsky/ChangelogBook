@@ -1,0 +1,83 @@
+[SIZE=6][B]ChangelogBook 2.0 - Major Update[/B][/SIZE]
+
+[SIZE=5][B][COLOR=rgb(52, 152, 219)]What's New in 2.0[/COLOR][/B][/SIZE]
+
+[B]User Experience Improvements[/B]
+[LIST]
+[*] [B]Short Numeric IDs:[/B] Changelog entries now use simple numeric IDs (1, 2, 3) instead of long UUIDs for better readability
+[*] [B]Custom ID Support:[/B] Admins can assign custom IDs to entries (e.g., "update-1.19", "bugfix-tnt")
+[*] [B]Database Migration:[/B] Automatic migration from UUID-based IDs to flexible ID system
+[/LIST]
+
+[SIZE=5][B][COLOR=rgb(231, 76, 60)]Security Enhancements[/COLOR][/B][/SIZE]
+
+[B]Critical Security Fixes[/B]
+[LIST]
+[*] [B]Command Injection Protection:[/B] Fixed critical vulnerability in reward system that could allow unauthorized command execution
+[*] [B]Path Traversal Protection:[/B] Export/import operations now validate file paths to prevent unauthorized file access
+[*] [B]SSRF Prevention:[/B] Discord webhook URLs are now validated to only allow official Discord endpoints
+[*] [B]Input Validation:[/B] Added content length limits (max 5000 characters) and proper sanitization
+[/LIST]
+
+[B]Medium Priority Security Improvements[/B]
+[LIST]
+[*] [B]Thread Safety:[/B] Replaced HashMap with ConcurrentHashMap to prevent race conditions during concurrent player joins
+[*] [B]HTTP Timeouts:[/B] Added connection timeouts (5s connect, 10s read) to prevent thread hanging
+[*] [B]Rate Limiting:[/B] Discord webhooks now respect rate limits (25 requests per 60 seconds)
+[*] [B]File Size Limits:[/B] Import operations limited to 10 MB and 10,000 entries to prevent resource exhaustion
+[*] [B]Error Handling:[/B] Replaced printStackTrace() with proper logging throughout the codebase
+[/LIST]
+
+[SIZE=5][B][COLOR=rgb(46, 204, 113)]Technical Improvements[/COLOR][/B][/SIZE]
+
+[LIST]
+[*] [B]Database Schema:[/B] ID column extended from VARCHAR(36) to VARCHAR(100) to support flexible IDs
+[*] [B]Backward Compatibility:[/B] Full support for existing UUID-based entries
+[*] [B]Validation System:[/B] Comprehensive input validation for IDs, content, file paths, and URLs
+[*] [B]Resource Management:[/B] Proper connection cleanup with try-finally blocks
+[*] [B]Async Operations:[/B] Better handling of asynchronous database and webhook operations
+[/LIST]
+
+[SIZE=5][B][COLOR=rgb(155, 89, 182)]Compatibility[/COLOR][/B][/SIZE]
+
+[LIST]
+[*] [B]Minecraft Version:[/B] 1.21.3+ (Paper, Spigot, Purpur)
+[*] [B]Java Version:[/B] Java 21 required
+[*] [B]Database:[/B] MySQL 8.0+ or YAML storage
+[*] [B]Dependencies:[/B] PlaceholderAPI 2.11.6 (optional)
+[/LIST]
+
+[SIZE=5][B][COLOR=rgb(241, 196, 15)]Migration Guide[/COLOR][/B][/SIZE]
+
+[B]Upgrading from 1.x to 2.0:[/B]
+[LIST=1]
+[*] Backup your database/data files before updating
+[*] Stop your server
+[*] Replace the old plugin JAR with ChangelogBook-2.0.jar
+[*] Start your server - database migration will run automatically
+[*] Check console for "Database schema updated successfully" message
+[*] Old UUID entries remain accessible, new entries use numeric IDs
+[/LIST]
+
+[B]No configuration changes required[/B] - all existing settings remain compatible.
+
+[SIZE=5][B][COLOR=rgb(52, 73, 94)]Notes[/COLOR][/B][/SIZE]
+
+[LIST]
+[*] This is a major security update - upgrading is strongly recommended
+[*] All previously identified security vulnerabilities have been addressed
+[*] Performance improvements for concurrent player operations
+[*] Enhanced error logging for easier troubleshooting
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=4][B]Full Security Audit Report[/B][/SIZE]
+[LIST]
+[*] 1 Critical vulnerability fixed
+[*] 4 High priority issues resolved
+[*] 5 Medium priority improvements implemented
+[*] Enhanced input validation across all user-facing features
+[/LIST]
+
+[CENTER][B]Thank you for using ChangelogBook![/B][/CENTER]

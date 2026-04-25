@@ -18,7 +18,7 @@ commands:
   reload: "&6/changelog reload &7- Reload configuration"
   reload_success: "&aConfiguration reloaded successfully"
   reload_permission: "&cYou don't have permission to reload the configuration"
-  add_usage: "&cUsage: /changelog add [category] <content>"
+  add_usage: "&cUsage: /changelog add [custom-id] [category] <content>"
   edit_usage: "&cUsage: /changelog edit <id> <content>"
   delete_usage: "&cUsage: /changelog delete <id>"
   give_usage: "&cUsage: /changelog give <player> <rewardType>"
@@ -31,7 +31,7 @@ messages:
   no_entries: "&7No changelog entries available"
   new_entries_count: "&eYou have &6%count% &enew changelog entries!"
   click_to_view: "&eClick here to view the changelog"
-  entry_added: "&aNew changelog entry added (%number%)"
+  entry_added: "&aNew changelog entry added (%number%) - ID: %id%"
   entry_updated: "&aChangelog entry updated (%number%)"
   entry_deleted: "&aChangelog entry deleted (%number%)"
   category_invalid: "&cInvalid category: %category%"
@@ -68,6 +68,7 @@ errors:
   entry_not_found: "&cChangelog entry not found with ID: %id%"
   cooldown_active: "&cYou must wait &e%hours% &chours before claiming another reward"
   empty_content: "&cYou cannot add an empty changelog entry!"
+  invalid_custom_id: "&cInvalid custom ID format: &e%id%&c. Must be alphanumeric with hyphens/underscores (1-64 chars)"
   content_too_short: "&cChangelog entry is too short! Minimum: &e%min% &ccharacters, yours: &e%current%"
   content_too_long: "&cChangelog entry is too long! Maximum: &e%max% &ccharacters, yours: &e%current%"
   database_save_failed: "&cFailed to save changelog entry to database. Please contact an administrator."
@@ -83,11 +84,12 @@ update:
 
 # Info command - fully customizable line list
 # Use "" for empty lines, add/remove/reorder lines as needed
-# Available placeholders: %pluginversion%, %servertype%, %serverversion%,
+# Available placeholders: %pluginversion%, %servertype%, %serverversion%, %servername%,
 #                         %updatenotifier%, %database%, %databasetype%, %databasesync%
 info:
   - "&8&m====================&r"
   - ""
+  - "&6Server name: &e%servername%"
   - "&6Plugin version: &e%pluginversion%"
   - "&6Server type: &e%servertype%"
   - "&6Server version: &e%serverversion%"
@@ -116,3 +118,76 @@ book:
   first_page_separator: "━━━━━━━━━━━━━━━━━━"
   entry_date_prefix: "📅 "
   entry_author_prefix: "👤 "
+
+# New features messages
+stats:
+  title: "&6&lChangelog Statistics"
+  total: "&7Total Entries: &f%total%"
+  today: "&7Today: &f%today%"
+  week: "&7This Week: &f%week%"
+  month: "&7This Month: &f%month%"
+  top_author: "&7Most Active Author: &f%author% &7(%count% entries)"
+  
+search:
+  usage: "&cUsage: /changelog search <query>"
+  no_results: "&cNo entries found"
+  results_header: "&6Search Results for: &f%query%"
+  results_count: "&7Found %count% entries"
+  
+health:
+  title: "&6&lSystem Health Check"
+  database: "&7Database: %status%"
+  discord: "&7Discord: %status%"
+  cache: "&7Cache: %status%"
+  config: "&7Config: %status%"
+  status_ok: "&aOK"
+  status_error: "&cERROR"
+  
+suggestions:
+  submitted: "&aSuggestion submitted! ID: &f%id%"
+  approved: "&aApproved suggestion: %id%"
+  rejected: "&cRejected suggestion: %id%"
+  not_found: "&cSuggestion not found"
+  
+export:
+  success: "&aExported to: &f%file%"
+  failed: "&cExport failed"
+  usage: "&cUsage: /changelog export <json|markdown|yaml|csv>"
+  
+import:
+  success: "&aImported &f%count% &aentries"
+  failed: "&cImport failed"
+  file_not_found: "&cFile not found: %file%"
+  usage: "&cUsage: /changelog import <filename>"
+  
+backup:
+  creating: "&eCreating backup..."
+  success: "&aBackup created successfully"
+  failed: "&cBackup failed"
+  
+tags:
+  added: "&aTag added"
+  removed: "&aTag removed"
+  not_found: "&cTag not found"
+  list: "&6Tags: &f%tags%"
+  
+votes:
+  recorded: "&aVote recorded"
+  already_voted: "&cYou already voted"
+  
+milestone:
+  created: "&aMilestone created: %id%"
+  
+impact:
+  set: "&aImpact level set to: %level%"
+  
+schedule:
+  created: "&aScheduled entry: %id%"
+  invalid_time: "&cInvalid delay time"
+  
+analytics:
+  title: "&6&lAnalytics Summary"
+  total_views: "&7Total Views: &f%views%"
+  total_creations: "&7Total Creations: &f%creations%"
+  most_used_command: "&7Most Used Command: &f%command%"
+  most_used_category: "&7Most Used Category: &f%category%"

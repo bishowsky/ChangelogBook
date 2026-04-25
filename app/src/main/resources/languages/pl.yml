@@ -18,7 +18,7 @@ commands:
   reload: "&6/changelog reload &7- Przeładuj konfigurację"
   reload_success: "&aKonfiguracja pomyślnie przeładowana"
   reload_permission: "&cNie masz uprawnień do przeładowania konfiguracji"
-  add_usage: "&cUżycie: /changelog add [kategoria] <treść>"
+  add_usage: "&cUżycie: /changelog add [custom-id] [kategoria] <treść>"
   edit_usage: "&cUżycie: /changelog edit <id> <treść>"
   delete_usage: "&cUżycie: /changelog delete <id>"
   give_usage: "&cUżycie: /changelog give <gracz> <typNagrody>"
@@ -31,7 +31,7 @@ messages:
   no_entries: "&7Brak dostępnych wpisów w dzienniku zmian"
   new_entries_count: "&eMasz &6%count% &enowych wpisów w dzienniku zmian!"
   click_to_view: "&eKliknij tutaj aby wyświetlić dziennik zmian"
-  entry_added: "&aDodano nowy wpis w dzienniku zmian (%number%)"
+  entry_added: "&aDodano nowy wpis w dzienniku zmian (%number%) - ID: %id%"
   entry_updated: "&aAktualizowano wpis w dzienniku zmian (%number%)"
   entry_deleted: "&aUsunięto wpis z dziennika zmian (%number%)"
   category_invalid: "&cNieprawidłowa kategoria: %category%"
@@ -68,6 +68,7 @@ errors:
   entry_not_found: "&cWpis w dzienniku zmian nie znaleziony (ID: %id%)"
   cooldown_active: "&cMusisz czekać &e%hours% &cgodzin przed odebraniem kolejnej nagrody"
   empty_content: "&cNie możesz dodać pustego wpisu w dzienniku zmian!"
+  invalid_custom_id: "&cNieprawidłowy format custom ID: &e%id%&c. Musi być alfanumeryczne z myślnikami/podkreśleniami (1-64 znaków)"
   content_too_short: "&cWpis w dzienniku zmian jest za krótki! Minimalnie: &e%min% &cznaków, twój: &e%current%"
   content_too_long: "&cWpis w dzienniku zmian jest za długi! Maksymalnie: &e%max% &cznaków, twój: &e%current%"
   database_save_failed: "&cNie udało się zapisać wpisu do bazy danych. Skontaktuj się z administratorem."
@@ -83,11 +84,12 @@ update:
 
 # Komenda info - w pełni customizowalna lista linii
 # Użyj "" dla pustych linii, dodawaj/usuwaj/przestawiaj linie jak chcesz
-# Dostępne placeholdery: %pluginversion%, %servertype%, %serverversion%,
+# Dostępne placeholdery: %pluginversion%, %servertype%, %serverversion%, %servername%,
 #                         %updatenotifier%, %database%, %databasetype%, %databasesync%
 info:
   - "&8&m====================&r"
   - ""
+  - "&6Nazwa serwera: &e%servername%"
   - "&6Wersja pluginu: &e%pluginversion%"
   - "&6Typ serwera: &e%servertype%"
   - "&6Wersja serwera: &e%serverversion%"
@@ -116,3 +118,76 @@ book:
   first_page_separator: "━━━━━━━━━━━━━━━━━━"
   entry_date_prefix: "📅 "
   entry_author_prefix: "👤 "
+
+# Wiadomości nowych funkcji
+stats:
+  title: "&6&lStatystyki Changelog"
+  total: "&7Wszystkich wpisów: &f%total%"
+  today: "&7Dzisiaj: &f%today%"
+  week: "&7W tym tygodniu: &f%week%"
+  month: "&7W tym miesiącu: &f%month%"
+  top_author: "&7Najaktywniejszy autor: &f%author% &7(%count% wpisów)"
+  
+search:
+  usage: "&cUżycie: /changelog search <zapytanie>"
+  no_results: "&cNie znaleziono wpisów"
+  results_header: "&6Wyniki wyszukiwania dla: &f%query%"
+  results_count: "&7Znaleziono %count% wpisów"
+  
+health:
+  title: "&6&lSprawdzenie stanu systemu"
+  database: "&7Baza danych: %status%"
+  discord: "&7Discord: %status%"
+  cache: "&7Cache: %status%"
+  config: "&7Konfiguracja: %status%"
+  status_ok: "&aOK"
+  status_error: "&cBŁĄD"
+  
+suggestions:
+  submitted: "&aSugestia wysłana! ID: &f%id%"
+  approved: "&aZatwierdzono sugestię: %id%"
+  rejected: "&cOdrzucono sugestię: %id%"
+  not_found: "&cNie znaleziono sugestii"
+  
+export:
+  success: "&aWyeksportowano do: &f%file%"
+  failed: "&cEksport nie powiódł się"
+  usage: "&cUżycie: /changelog export <json|markdown|yaml|csv>"
+  
+import:
+  success: "&aZaimportowano &f%count% &awpisów"
+  failed: "&cImport nie powiódł się"
+  file_not_found: "&cNie znaleziono pliku: %file%"
+  usage: "&cUżycie: /changelog import <nazwa_pliku>"
+  
+backup:
+  creating: "&eTworzenie kopii zapasowej..."
+  success: "&aKopia zapasowa utworzona pomyślnie"
+  failed: "&cTworzenie kopii zapasowej nie powiodło się"
+  
+tags:
+  added: "&aTag dodany"
+  removed: "&aTag usunięty"
+  not_found: "&cNie znaleziono tagu"
+  list: "&6Tagi: &f%tags%"
+  
+votes:
+  recorded: "&aGłos zapisany"
+  already_voted: "&cJuż zagłosowałeś"
+  
+milestone:
+  created: "&aKamień milowy utworzony: %id%"
+  
+impact:
+  set: "&aPoziom wpływu ustawiony na: %level%"
+  
+schedule:
+  created: "&aZaplanowany wpis: %id%"
+  invalid_time: "&cNieprawidłowy czas opóźnienia"
+  
+analytics:
+  title: "&6&lPodsumowanie analityki"
+  total_views: "&7Wszystkich wyświetleń: &f%views%"
+  total_creations: "&7Wszystkich wpisów: &f%creations%"
+  most_used_command: "&7Najczęściej używana komenda: &f%command%"
+  most_used_category: "&7Najczęściej używana kategoria: &f%category%"

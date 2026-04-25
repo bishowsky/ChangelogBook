@@ -9,7 +9,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 /**
@@ -17,6 +20,12 @@ import java.util.logging.Level;
  */
 public class DiscordWebhook {
     private final ChangelogPlugin plugin;
+    
+    // Rate limiting: Discord allows 30 requests per 60 seconds per webhook
+    // We use 25/60s to be safe
+    private static final int MAX_REQUESTS_PER_MINUTE = 25;
+    private static final long RATE_LIMIT_WINDOW_MS = 60000; // 60 seconds
+    private final Queue<Instant> requestTimes = new ConcurrentLinkedQueue<>();
 
     public DiscordWebhook(ChangelogPlugin plugin) {
         this.plugin = plugin;
@@ -49,13 +58,31 @@ public class DiscordWebhook {
         if (url == null || url.isEmpty() || url.equals("https://discord.com/api/webhooks/...")) {
             return false;
         }
+        return isValidDiscordWebhook(url);
+    }
+    
+    /**
+     * Validates Discord webhook URL to prevent SSRF attacks
+     * @param webhookUrl URL to validate
+     * @return true if valid Discord webhook, false otherwise
+     */
+    private boolean isValidDiscordWebhook(String webhookUrl) {
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            return false;
+        }
+        
         try {
-            new java.net.URL(url);
-            if (!url.startsWith("https://discord.com/api/webhooks/") &&
-                !url.startsWith("https://discordapp.com/api/webhooks/")) {
-                plugin.getLogger().warning("Invalid Discord webhook URL (must start with https://discord.com/api/webhooks/)");
+            new java.net.URL(webhookUrl);
+            
+            // Only allow official Discord webhook endpoints
+            if (!webhookUrl.startsWith("https://discord.com/api/webhooks/") &&
+                !webhookUrl.startsWith("https://canary.discord.com/api/webhooks/") &&
+                !webhookUrl.startsWith("https://ptb.discord.com/api/webhooks/") &&
+                !webhookUrl.startsWith("https://discordapp.com/api/webhooks/")) {
+                plugin.getLogger().warning("SECURITY: Rejected non-Discord webhook URL - potential SSRF attempt");
                 return false;
             }
+            
             return true;
         } catch (java.net.MalformedURLException e) {
             plugin.getLogger().warning("Malformed Discord webhook URL: " + e.getMessage());
@@ -76,16 +103,40 @@ public class DiscordWebhook {
         // Execute async to avoid blocking main thread
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
+                // Check rate limit before sending
+                if (!checkRateLimit()) {
+                    plugin.getLogger().warning("Discord webhook rate limit reached. Skipping notification for entry: " + entry.getId());
+                    return;
+                }
+                
                 JsonObject payload = buildChangelogEmbed(entry, author);
                 sendWebhook(payload);
                 plugin.debug("Discord webhook sent successfully for entry: " + entry.getId());
             } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to send Discord webhook: " + e.getMessage());
-                if (plugin.isDebugMode()) {
-                    e.printStackTrace();
-                }
+                plugin.getLogger().log(Level.WARNING, "Failed to send Discord webhook", e);
             }
         });
+    }
+    
+    /**
+     * Checks if we're within Discord's rate limit (25 requests per 60 seconds)
+     * @return true if we can send, false if rate limited
+     */
+    private boolean checkRateLimit() {
+        Instant now = Instant.now();
+        Instant windowStart = now.minusMillis(RATE_LIMIT_WINDOW_MS);
+        
+        // Remove old timestamps outside the window
+        requestTimes.removeIf(timestamp -> timestamp.isBefore(windowStart));
+        
+        // Check if we're at the limit
+        if (requestTimes.size() >= MAX_REQUESTS_PER_MINUTE) {
+            return false;
+        }
+        
+        // Add current timestamp
+        requestTimes.add(now);
+        return true;
     }
 
     /**
@@ -175,6 +226,10 @@ public class DiscordWebhook {
         try {
             URL url = new URL(getWebhookUrl());
             connection = (HttpURLConnection) url.openConnection();
+            
+            // Set timeouts to prevent hanging on slow/unresponsive servers
+            connection.setConnectTimeout(5000);  // 5 seconds to establish connection
+            connection.setReadTimeout(10000);    // 10 seconds to read response
             
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");

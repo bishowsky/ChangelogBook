@@ -32,6 +32,20 @@ public class RewardManager {
         this.databaseManager = databaseManager;
         loadCooldowns();
     }
+    
+    /**
+     * Validates player name to prevent command injection
+     * Only allows alphanumeric characters, underscores (valid Minecraft names)
+     * @param playerName Player name to validate
+     * @return true if safe, false if potentially malicious
+     */
+    private boolean isPlayerNameSafe(String playerName) {
+        if (playerName == null || playerName.isEmpty()) {
+            return false;
+        }
+        // Minecraft player names: 3-16 chars, alphanumeric + underscore only
+        return playerName.matches("^[a-zA-Z0-9_]{3,16}$");
+    }
 
     /**
      * Checks if a player can claim a specific reward type
@@ -95,13 +109,23 @@ public class RewardManager {
             plugin.debug("Player " + player.getName() + " cannot claim " + rewardType + " reward (cooldown active)");
             return false;
         }
+        
+        // Validate player name to prevent command injection
+        String playerName = player.getName();
+        if (!isPlayerNameSafe(playerName)) {
+            plugin.getLogger().warning("SECURITY: Blocked potential command injection attempt from player: " + playerName);
+            plugin.getLogger().warning("Player name contains invalid characters - reward claim denied");
+            return false;
+        }
 
-        // Execute the reward command
-        String command = getRewardCommand(rewardType);
-        if (command != null && !command.isEmpty()) {
-            String finalCommand = command.replace("%player%", player.getName());
-            plugin.debug("Executing reward command for " + player.getName() + ": " + finalCommand);
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
+        // Execute the reward commands (supports both single command and list)
+        var commands = getRewardCommands(rewardType);
+        if (!commands.isEmpty()) {
+            for (String command : commands) {
+                String finalCommand = command.replace("%player%", playerName);
+                plugin.debug("Executing reward command for " + playerName + ": " + finalCommand);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
+            }
         }
 
         // Update cooldown
@@ -162,16 +186,49 @@ public class RewardManager {
     }
 
     /**
-     * Gets the command to execute for a reward type
+     * Gets the command to execute for a reward type (legacy support)
      * @param rewardType The reward type
      * @return The command string
+     * @deprecated Use getRewardCommands() instead for multiple commands support
      */
+    @Deprecated
     public String getRewardCommand(String rewardType) {
+        var commands = getRewardCommands(rewardType);
+        return commands.isEmpty() ? "" : commands.get(0);
+    }
+
+    /**
+     * Gets the commands to execute for a reward type
+     * Supports both single command (string) and multiple commands (list)
+     * @param rewardType The reward type
+     * @return List of commands to execute
+     */
+    public java.util.List<String> getRewardCommands(String rewardType) {
         ConfigurationSection rewards = plugin.getConfig().getConfigurationSection("rewards.types." + rewardType);
+        java.util.List<String> commandList = new java.util.ArrayList<>();
+        
         if (rewards != null) {
-            return rewards.getString("command", "");
+            // Try to get as list first (new format)
+            if (rewards.isList("commands")) {
+                commandList.addAll(rewards.getStringList("commands"));
+            }
+            // Fallback to single command (legacy format)
+            else if (rewards.isString("command")) {
+                String cmd = rewards.getString("command", "");
+                if (!cmd.isEmpty()) {
+                    commandList.add(cmd);
+                }
+            }
+            // Also check for 'commands' as string (edge case)
+            else if (rewards.isString("commands")) {
+                String cmd = rewards.getString("commands", "");
+                if (!cmd.isEmpty()) {
+                    commandList.add(cmd);
+                }
+            }
         }
-        return "";
+        
+        return commandList;
     }
 
     /**

@@ -1,7 +1,5 @@
 package com.puffmc.changelog;
 
-import java.util.UUID;
-
 public class ChangelogEntry {
     private final String id;
     private String content;
@@ -36,21 +34,10 @@ public class ChangelogEntry {
         this.category = category;
     }
 
-    // Constructor for new entries (generates UUID)
-    public ChangelogEntry(String content, String author, long timestamp) {
-        this.id = UUID.randomUUID().toString();
-        this.content = content;
-        this.author = author;
-        this.timestamp = timestamp;
-        this.deleted = false;
-        this.createdAt = timestamp;
-        this.modifiedAt = timestamp;
-        this.category = null;
-    }
-
-    // Constructor for new entries with category
-    public ChangelogEntry(String content, String author, long timestamp, String category) {
-        this.id = UUID.randomUUID().toString();
+    // Constructor for new entries with custom ID and category
+    public ChangelogEntry(String customId, String content, String author, long timestamp, String category, boolean useCustomId) {
+        // useCustomId parameter is used to differentiate this constructor from the existing one
+        this.id = customId;
         this.content = content;
         this.author = author;
         this.timestamp = timestamp;

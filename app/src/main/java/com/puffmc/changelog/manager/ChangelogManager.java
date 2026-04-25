@@ -11,20 +11,49 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChangelogManager {
     private final ChangelogPlugin plugin;
-    private final Map<UUID, Long> lastSeenMap = new HashMap<>();
+    private final Map<UUID, Long> lastSeenMap = new ConcurrentHashMap<>();
     private final List<ChangelogEntry> entries = new ArrayList<>();
     private final DatabaseManager databaseManager;
     private MessageManager messageManager;
     // ✅ FIX #10: Cache for display numbers to avoid O(n log n) on every call
     private final Map<String, String> displayNumberCache = new HashMap<>();
+    private int nextNumericId = 1; // Counter for generating short numeric IDs
+    
+    // Content validation constants
+    private static final int MAX_CONTENT_LENGTH = 5000; // 5000 characters max
+    private static final int MIN_CONTENT_LENGTH = 1;    // At least 1 character
 
     public ChangelogManager(ChangelogPlugin plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
         // Note: loadData() is called explicitly from ChangelogPlugin after DB connects
+    }
+    
+    /**
+     * Gets the next numeric ID for a new changelog entry
+     * @return Next numeric ID as string
+     */
+    private synchronized String getNextNumericId() {
+        // Find highest existing numeric ID
+        int maxId = 0;
+        for (ChangelogEntry entry : entries) {
+            try {
+                int id = Integer.parseInt(entry.getId());
+                if (id > maxId) {
+                    maxId = id;
+                }
+            } catch (NumberFormatException e) {
+                // Not a numeric ID, skip
+            }
+        }
+        
+        // Set next ID counter
+        nextNumericId = maxId + 1;
+        return String.valueOf(nextNumericId++);
     }
 
     /**
@@ -208,8 +237,45 @@ public class ChangelogManager {
      * @return The created entry
      */
     public ChangelogEntry addEntry(String content, String author, String category) {
-        ChangelogEntry entry = new ChangelogEntry(content, author, System.currentTimeMillis(), category);
-        plugin.debug("Adding new changelog entry by " + author + " [" + (category != null ? category : "no category") + "]: " + content.substring(0, Math.min(50, content.length())));
+        return addEntry(null, content, author, category);
+    }
+
+    /**
+     * Adds a new changelog entry with custom ID and category
+     * @param customId Custom ID for the entry (optional, generates numeric ID if null)
+     * @param content The content of the entry
+     * @param author The author of the entry
+     * @param category The category of the entry (optional, can be null)
+     * @return The created entry
+     * @throws IllegalArgumentException if content is invalid
+     */
+    public ChangelogEntry addEntry(String customId, String content, String author, String category) {
+        // Validate content
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("Content cannot be empty");
+        }
+        
+        if (content.length() > MAX_CONTENT_LENGTH) {
+            throw new IllegalArgumentException("Content too long (max " + MAX_CONTENT_LENGTH + " characters, got " + content.length() + ")");
+        }
+        
+        // Validate and sanitize custom ID if provided
+        String finalId = customId;
+        if (customId != null && !customId.isEmpty()) {
+            // Check if ID already exists
+            if (entryExists(customId)) {
+                plugin.getLogger().warning("Custom ID already exists: " + customId + ". Using numeric ID instead.");
+                finalId = null;
+            }
+        }
+        
+        // Generate numeric ID if no custom ID provided
+        if (finalId == null || finalId.isEmpty()) {
+            finalId = getNextNumericId();
+        }
+        
+        ChangelogEntry entry = new ChangelogEntry(finalId, content, author, System.currentTimeMillis(), category, true);
+        plugin.debug("Adding new changelog entry by " + author + " [ID: " + entry.getId() + ", Category: " + (category != null ? category : "none") + "]: " + content.substring(0, Math.min(50, content.length())));
         
         if (databaseManager.isUsingMySQL()) {
             // ✅ FIX #2: Race condition - add to memory ONLY after successful DB save (Critical)
@@ -234,10 +300,7 @@ public class ChangelogManager {
                             plugin.getLogger().severe("Entry content: " + entry.getContent().substring(0, Math.min(100, entry.getContent().length())));
                         }
                     } catch (Exception e) {
-                        plugin.getLogger().severe("Error adding entry to database: " + e.getMessage());
-                        if (plugin.isDebugMode()) {
-                            e.printStackTrace();
-                        }
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error adding entry to database", e);
                     }
                 }
             }.runTaskAsynchronously(plugin);
@@ -272,10 +335,7 @@ public class ChangelogManager {
                                 try {
                                     databaseManager.updateEntry(id, content);
                                 } catch (Exception e) {
-                                    plugin.getLogger().severe("Error updating entry in database: " + e.getMessage());
-                                    if (plugin.isDebugMode()) {
-                                        e.printStackTrace();
-                                    }
+                                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error updating entry in database", e);
                                 }
                             }
                         }.runTaskAsynchronously(plugin);
@@ -312,10 +372,7 @@ public class ChangelogManager {
                                 try {
                                     databaseManager.removeEntry(id);
                                 } catch (Exception e) {
-                                    plugin.getLogger().severe("Error removing entry from database: " + e.getMessage());
-                                    if (plugin.isDebugMode()) {
-                                        e.printStackTrace();
-                                    }
+                                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error removing entry from database", e);
                                 }
                             }
                         }.runTaskAsynchronously(plugin);
@@ -328,6 +385,55 @@ public class ChangelogManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if an entry with the given ID exists
+     * @param id The ID to check
+     * @return true if exists, false otherwise
+     */
+    public boolean entryExists(String id) {
+        synchronized (this) {
+            return entries.stream().anyMatch(e -> e.getId().equals(id) && !e.isDeleted());
+        }
+    }
+
+    /**
+     * Validates custom ID format
+     * Custom IDs must:
+     * - Be 1-100 characters long (extended from 64 to support longer custom IDs)
+     * - Contain only alphanumeric characters, hyphens, and underscores
+     * - Numeric-only IDs are accepted (used by system: 1, 2, 3, etc.)
+     * - UUID format is blocked to avoid confusion
+     * @param customId The ID to validate
+     * @return true if valid, false otherwise
+     */
+    public boolean isValidCustomId(String customId) {
+        if (customId == null || customId.isEmpty()) {
+            return false;
+        }
+        
+        // Check length (extended to 100 to match database VARCHAR(100))
+        if (customId.length() < 1 || customId.length() > 100) {
+            return false;
+        }
+        
+        // Accept pure numeric IDs (system-generated: 1, 2, 3, etc.)
+        if (customId.matches("^\\d+$")) {
+            return true;
+        }
+        
+        // For custom IDs: alphanumeric, hyphens, underscores only
+        if (!customId.matches("^[a-zA-Z0-9_-]+$")) {
+            return false;
+        }
+        
+        // Block UUID format to avoid confusion with old system
+        if (customId.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+            return false;
+        }
+        
+        return true;
     }
 
     /**
@@ -382,10 +488,7 @@ public class ChangelogManager {
                     try {
                         databaseManager.updateLastSeen(uuid.toString(), timestamp);
                     } catch (Exception e) {
-                        plugin.getLogger().severe("Error updating last-seen in database: " + e.getMessage());
-                        if (plugin.isDebugMode()) {
-                            e.printStackTrace();
-                        }
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE, "Error updating last-seen in database", e);
                     }
                 }
             }.runTaskAsynchronously(plugin);

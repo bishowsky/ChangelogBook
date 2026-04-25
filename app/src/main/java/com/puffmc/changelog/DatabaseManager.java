@@ -96,9 +96,9 @@ public class DatabaseManager {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             
-            // Create entries table with UUID and soft-delete support
+            // Create entries table with flexible ID support (numeric or custom)
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + entriesTable + " (" +
-                    "id VARCHAR(36) PRIMARY KEY, " +
+                    "id VARCHAR(100) PRIMARY KEY, " +
                     "content LONGTEXT NOT NULL, " +
                     "author VARCHAR(36) NOT NULL, " +
                     "timestamp BIGINT NOT NULL, " +
@@ -114,6 +114,15 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 // Column might already exist, ignore
                 plugin.debug("Category column already exists or migration skipped");
+            }
+            
+            // Migrate existing tables: expand ID column to support longer custom IDs
+            try {
+                statement.executeUpdate("ALTER TABLE " + entriesTable + " MODIFY COLUMN id VARCHAR(100)");
+                plugin.debug("Extended ID column to VARCHAR(100) for custom ID support");
+            } catch (SQLException e) {
+                // Migration might fail on some MySQL versions, log but continue
+                plugin.debug("ID column migration skipped or failed: " + e.getMessage());
             }
             
             // Create last seen table

@@ -1,5 +1,8 @@
 # ChangelogBook Configuration
 
+# Server name displayed in /changelog info command
+server-name: "My Server"
+
 # Language: en (English) or pl (Polish)
 language: "en"
 
@@ -86,8 +89,18 @@ mysql:
     connection-timeout: 10000  # Connection timeout in milliseconds
     idle-timeout: 600000       # Idle timeout (10 minutes)
     max-lifetime: 1800000      # Max connection lifetime (30 minutes)
-  # Multi-server database synchronization (planned feature)
-  sync: false
+  # Multi-server database synchronization
+  # When enabled with MySQL, all servers sharing the same database will see the same changelog
+  # Perfect for networks with multiple servers (lobby, smp, creative, etc.)
+  # Requirements:
+  #   1. MySQL must be enabled (mysql.enabled: true)
+  #   2. All servers must use the same database and table-prefix
+  #   3. All servers should have similar plugin configuration
+  # How it works:
+  #   - All changelog entries are stored in shared MySQL database
+  #   - All servers read from and write to the same tables
+  #   - Changes made on any server are instantly visible on all other servers
+  sync: true
 
 # Database Maintenance
 database:
@@ -108,21 +121,32 @@ rewards:
       chance: 20
       cooldown-hours: 4
       max-days: 7
-      command: "say %player% received bronze reward!"
+      # You can use single command (legacy):
+      # command: "say %player% received bronze reward!"
+      # Or multiple commands (new feature):
+      commands:
+        - "say %player% received bronze reward!"
+        - "give %player% diamond 1"
     # Silver reward - intermediate level
     silver:
       enabled: true
       chance: 10
       cooldown-hours: 8
       max-days: 14
-      command: "say %player% received silver reward!"
+      commands:
+        - "say %player% received silver reward!"
+        - "give %player% emerald 5"
+        - "bc &6%player% &eotrzymał nagrodę srebrną!"
     # Gold reward - premium level
     gold:
       enabled: true
       chance: 5
       cooldown-hours: 12
       max-days: 30
-      command: "say %player% received gold reward!"
+      commands:
+        - "say %player% received gold reward!"
+        - "give %player% diamond 10"
+        - "bc &6%player% &eotrzymał nagrodę złotą!"
 
 # Discord Integration Configuration
 discord:
@@ -152,6 +176,69 @@ limits:
   max-content-length: 5000
   # Minimum changelog entry length (characters)
   min-content-length: 3
+
+# Auto-category detection
+category-detection:
+  enabled: false
+  min-matches: 2
+  keywords:
+    fix:
+      - "fix"
+      - "fixed"
+      - "bug"
+      - "issue"
+      - "problem"
+      - "error"
+    added:
+      - "add"
+      - "added"
+      - "new"
+      - "feature"
+      - "implement"
+    removed:
+      - "remove"
+      - "removed"
+      - "delete"
+      - "deprecated"
+
+# Backup system
+backup:
+  enabled: true
+  interval-hours: 24
+  retention-days: 30
+
+# Scheduled entries
+scheduled-entries:
+  enabled: true
+  check-interval: 60
+
+# Analytics
+analytics:
+  enabled: true
+  save-interval: 300
+
+# RSS Feed
+rss:
+  enabled: false
+  title: "Server Changelog"
+  description: "Latest updates and changes"
+  link: "https://example.com"
+  output-path: "changelog.xml"
+  max-entries: 50
+
+# Notifications (Title, ActionBar, BossBar)
+notifications:
+  enabled: true
+  type: "actionbar"
+  actionbar:
+    text: "&6New changelog: &f%category%"
+  title:
+    text: "&6New Changelog!"
+    subtitle: "&7Category: %category%"
+  bossbar:
+    text: "&6New Changelog Entry"
+    color: "BLUE"
+    duration: 10
 
 # Debug mode - set to true for verbose logging
 debug: false

@@ -1,9 +1,12 @@
 package com.puffmc.changelog;
 
+import com.puffmc.changelog.api.ChangelogAPI;
 import com.puffmc.changelog.command.ChangelogCommand;
 import com.puffmc.changelog.command.ChangelogTabCompleter;
 import com.puffmc.changelog.listener.PlayerJoinListener;
 import com.puffmc.changelog.manager.ChangelogManager;
+import com.puffmc.changelog.util.CategoryDetector;
+import com.puffmc.changelog.util.HealthChecker;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,6 +32,27 @@ public class ChangelogPlugin extends JavaPlugin {
     private File discordConfigFile;
     private FileConfiguration discordConfig;
     private boolean debugMode = false;
+    
+    // New feature managers
+    private CategoryDetector categoryDetector;
+    private HealthChecker healthChecker;
+    private ChangelogStatistics statistics;
+    private ChangelogSearch search;
+    private ChangelogPreview preview;
+    private SuggestionManager suggestionManager;
+    private BackupManager backupManager;
+    private ExportManager exportManager;
+    private ChangelogPlaceholderExpansion placeholderExpansion;
+    private TagManager tagManager;
+    private TemplateManager templateManager;
+    private VoteManager voteManager;
+    private VersionMilestone versionMilestone;
+    private NotificationManager notificationManager;
+    private ImpactLevel impactLevel;
+    private ScheduledChangelog scheduledChangelog;
+    private AnalyticsTracker analyticsTracker;
+    private RssFeedGenerator rssFeedGenerator;
+    private DiscordEnhancedEmbed discordEnhancedEmbed;
 
     @Override
     public void onEnable() {
@@ -88,6 +112,47 @@ public class ChangelogPlugin extends JavaPlugin {
             logManager.info("Discord webhook integration enabled");
         }
         
+        // Initialize new feature managers
+        logManager.info("Initializing feature managers...");
+        
+        categoryDetector = new CategoryDetector(this);
+        healthChecker = new HealthChecker(this);
+        statistics = new ChangelogStatistics(this, changelogManager);
+        search = new ChangelogSearch(changelogManager);
+        preview = new ChangelogPreview(this, changelogManager);
+        suggestionManager = new SuggestionManager(this);
+        backupManager = new BackupManager(this);
+        exportManager = new ExportManager(this, changelogManager);
+        tagManager = new TagManager(this);
+        templateManager = new TemplateManager(this);
+        voteManager = new VoteManager(this);
+        versionMilestone = new VersionMilestone(this);
+        notificationManager = new NotificationManager(this);
+        impactLevel = new ImpactLevel(this);
+        scheduledChangelog = new ScheduledChangelog(this);
+        analyticsTracker = new AnalyticsTracker(this);
+        rssFeedGenerator = new RssFeedGenerator(this, changelogManager);
+        discordEnhancedEmbed = new DiscordEnhancedEmbed(this);
+        
+        // Initialize Public API
+        ChangelogAPI.initialize(this, changelogManager);
+        logManager.info("Public API initialized");
+        
+        // Initialize PlaceholderAPI expansion if available
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            placeholderExpansion = new ChangelogPlaceholderExpansion(this, changelogManager);
+            if (placeholderExpansion.register()) {
+                logManager.info("PlaceholderAPI expansion registered");
+            }
+        }
+        
+        // Start scheduled tasks
+        backupManager.startAutoBackup();
+        scheduledChangelog.startScheduler();
+        analyticsTracker.startAutoSave();
+        
+        logManager.info("All feature managers initialized successfully");
+        
         // Schedule periodic update checks (first check fires after 30 seconds / 600 ticks)
         long checkIntervalHours = getConfig().getLong("update-checker.check-interval-hours", 6);
         long checkIntervalTicks = checkIntervalHours * 72000L; // Convert hours to ticks (1 hour = 72000 ticks)
@@ -144,6 +209,25 @@ public class ChangelogPlugin extends JavaPlugin {
     public void onDisable() {
         if (logManager != null) {
             logManager.info("ChangelogBook shutting down...");
+        }
+        
+        // Stop scheduled tasks
+        if (backupManager != null) {
+            backupManager.stopAutoBackup();
+        }
+        if (scheduledChangelog != null) {
+            scheduledChangelog.stopScheduler();
+        }
+        if (analyticsTracker != null) {
+            analyticsTracker.stopAutoSave();
+        }
+        if (notificationManager != null) {
+            notificationManager.cleanup();
+        }
+        
+        // Unregister PlaceholderAPI expansion
+        if (placeholderExpansion != null) {
+            placeholderExpansion.unregister();
         }
         
         if (changelogManager != null) {
@@ -286,6 +370,88 @@ public class ChangelogPlugin extends JavaPlugin {
      */
     public DiscordWebhook getDiscordWebhook() {
         return discordWebhook;
+    }
+
+    /**
+     * Gets the update checker
+     * @return UpdateChecker instance
+     */
+    public UpdateChecker getUpdateChecker() {
+        return updateChecker;
+    }
+
+    // New feature manager getters
+    
+    public CategoryDetector getCategoryDetector() {
+        return categoryDetector;
+    }
+    
+    public HealthChecker getHealthChecker() {
+        return healthChecker;
+    }
+    
+    public ChangelogStatistics getStatistics() {
+        return statistics;
+    }
+    
+    public ChangelogSearch getSearch() {
+        return search;
+    }
+    
+    public ChangelogPreview getPreview() {
+        return preview;
+    }
+    
+    public SuggestionManager getSuggestionManager() {
+        return suggestionManager;
+    }
+    
+    public BackupManager getBackupManager() {
+        return backupManager;
+    }
+    
+    public ExportManager getExportManager() {
+        return exportManager;
+    }
+    
+    public TagManager getTagManager() {
+        return tagManager;
+    }
+    
+    public TemplateManager getTemplateManager() {
+        return templateManager;
+    }
+    
+    public VoteManager getVoteManager() {
+        return voteManager;
+    }
+    
+    public VersionMilestone getVersionMilestone() {
+        return versionMilestone;
+    }
+    
+    public NotificationManager getNotificationManager() {
+        return notificationManager;
+    }
+    
+    public ImpactLevel getImpactLevel() {
+        return impactLevel;
+    }
+    
+    public ScheduledChangelog getScheduledChangelog() {
+        return scheduledChangelog;
+    }
+    
+    public AnalyticsTracker getAnalyticsTracker() {
+        return analyticsTracker;
+    }
+    
+    public RssFeedGenerator getRssFeedGenerator() {
+        return rssFeedGenerator;
+    }
+    
+    public DiscordEnhancedEmbed getDiscordEnhancedEmbed() {
+        return discordEnhancedEmbed;
     }
 
     /**

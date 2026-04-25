@@ -138,6 +138,103 @@ public class ChangelogCommand implements CommandExecutor {
                 }
                 return handleInfoCommand(sender);
                 
+            case "stats":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleStatsCommand(sender);
+                
+            case "search":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleSearchCommand(sender, args);
+                
+            case "health":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleHealthCommand(sender);
+                
+            case "preview":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handlePreviewCommand(sender, args);
+                
+            case "suggest":
+                return handleSuggestCommand(sender, args);
+                
+            case "suggestions":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleSuggestionsCommand(sender, args);
+                
+            case "export":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleExportCommand(sender, args);
+                
+            case "import":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleImportCommand(sender, args);
+                
+            case "backup":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleBackupCommand(sender);
+                
+            case "tag":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleTagCommand(sender, args);
+                
+            case "vote":
+                return handleVoteCommand(sender, args);
+                
+            case "milestone":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleMilestoneCommand(sender, args);
+                
+            case "impact":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleImpactCommand(sender, args);
+                
+            case "schedule":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleScheduleCommand(sender, args);
+                
+            case "analytics":
+                if (!sender.hasPermission("changelogbook.admin")) {
+                    sender.sendMessage(messageManager.getMessage("errors.no_permission"));
+                    return true;
+                }
+                return handleAnalyticsCommand(sender);
+                
             default:
                 showHelpMenu(sender);
                 return true;
@@ -150,23 +247,57 @@ public class ChangelogCommand implements CommandExecutor {
             return true;
         }
 
-        // Check if first argument is a valid category
-        String category = null;
-        int contentStartIndex = 1;
-        
         // Get enabled categories from config
         Set<String> enabledCategories = getEnabledCategories();
         
-        // Check if first argument matches a category
-        if (enabledCategories.contains(args[1].toLowerCase())) {
-            category = args[1].toLowerCase();
-            contentStartIndex = 2;
-            
-            // Ensure there's content after the category
-            if (args.length < 3) {
+        String customId = null;
+        String category = null;
+        int contentStartIndex = 1;
+        
+        // Parse command arguments to detect format:
+        // Format 1: /changelog add <content>
+        // Format 2: /changelog add <category> <content>
+        // Format 3: /changelog add <custom-id> <category> <content>
+        
+        if (args.length >= 3) {
+            // Check if args[2] is a category (Format 3: custom-id + category)
+            if (enabledCategories.contains(args[2].toLowerCase())) {
+                // This is Format 3 with custom ID
+                String potentialCustomId = args[1];
+                
+                // Validate custom ID
+                if (changelogManager.isValidCustomId(potentialCustomId)) {
+                    customId = potentialCustomId;
+                    category = args[2].toLowerCase();
+                    contentStartIndex = 3;
+                } else {
+                    // Invalid custom ID format
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("id", potentialCustomId);
+                    sender.sendMessage(messageManager.getMessage("errors.invalid_custom_id", placeholders));
+                    return true;
+                }
+            }
+            // Check if args[1] is a category (Format 2: category only)
+            else if (enabledCategories.contains(args[1].toLowerCase())) {
+                category = args[1].toLowerCase();
+                contentStartIndex = 2;
+            }
+            // else: Format 1 - no category, no custom ID
+        } else if (args.length == 2) {
+            // Only 2 args: could be Format 1 or Format 2 with category
+            if (enabledCategories.contains(args[1].toLowerCase())) {
+                // Format 2 but missing content
                 sender.sendMessage(messageManager.getMessage("commands.add_usage"));
                 return true;
             }
+            // else: Format 1 with just content in args[1]
+        }
+        
+        // Ensure there's content after parsing
+        if (args.length < contentStartIndex + 1) {
+            sender.sendMessage(messageManager.getMessage("commands.add_usage"));
+            return true;
         }
 
         // Build content from remaining arguments
@@ -207,15 +338,19 @@ public class ChangelogCommand implements CommandExecutor {
         }
 
         String authorName = (sender instanceof Player) ? ((Player) sender).getName() : sender.getName();
-        ChangelogEntry entry = changelogManager.addEntry(finalContent, authorName, category);
+        
+        // Add entry with custom ID if provided
+        ChangelogEntry entry = changelogManager.addEntry(customId, finalContent, authorName, category);
 
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("number", changelogManager.getEntryDisplayNumber(entry));
+        placeholders.put("id", entry.getId());
         sender.sendMessage(messageManager.getMessage("messages.entry_added", placeholders));
         
         // Log the action
         String categoryInfo = category != null ? " [" + category + "]" : "";
-        plugin.getLogManager().info("Changelog entry added by " + authorName + categoryInfo + ": " + entry.getId());
+        String customIdInfo = customId != null ? " (Custom ID: " + customId + ")" : "";
+        plugin.getLogManager().info("Changelog entry added by " + authorName + categoryInfo + customIdInfo + ": " + entry.getId());
         
         // Send Discord notification
         if (plugin.getDiscordWebhook() != null && plugin.getDiscordWebhook().isEnabled()) {
@@ -441,6 +576,7 @@ public class ChangelogCommand implements CommandExecutor {
         String pluginVersion = plugin.getDescription().getVersion();
         String serverType = VersionUtil.getServerType();
         String serverVersion = VersionUtil.getServerVersionString();
+        String serverName = plugin.getConfig().getString("server-name", "My Server");
         boolean updateNotifierEnabled = plugin.getConfig().getBoolean("update-checker.enabled", true);
         boolean databaseEnabled = plugin.getDatabaseManager().isUsingMySQL();
         String databaseType = plugin.getConfig().getBoolean("mysql.enabled", false) ? "MySQL" : "YAML";
@@ -451,6 +587,7 @@ public class ChangelogCommand implements CommandExecutor {
         placeholders.put("pluginversion", pluginVersion);
         placeholders.put("servertype", serverType);
         placeholders.put("serverversion", serverVersion);
+        placeholders.put("servername", serverName);
         placeholders.put("updatenotifier", updateNotifierEnabled ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled");
         placeholders.put("database", databaseEnabled ? ChatColor.GREEN + "Connected" : ChatColor.RED + "Disconnected");
         placeholders.put("databasetype", databaseType);
@@ -585,7 +722,7 @@ public class ChangelogCommand implements CommandExecutor {
         sender.sendMessage(messageManager.getMessage("commands.help"));
         
         if (sender.hasPermission("changelogbook.admin")) {
-            sender.sendMessage(ChatColor.GOLD + "/changelog add <content>" + ChatColor.WHITE + " - Add a changelog entry");
+            sender.sendMessage(ChatColor.GOLD + "/changelog add [custom-id] [category] <content>" + ChatColor.WHITE + " - Add a changelog entry");
             sender.sendMessage(ChatColor.GOLD + "/changelog edit <id> <content>" + ChatColor.WHITE + " - Edit an entry");
             sender.sendMessage(ChatColor.GOLD + "/changelog delete <id>" + ChatColor.WHITE + " - Delete an entry");
             sender.sendMessage(ChatColor.GOLD + "/changelog list" + ChatColor.WHITE + " - List all entries");
@@ -715,5 +852,316 @@ public class ChangelogCommand implements CommandExecutor {
                 }
             }
         }
+    }
+    
+    private boolean handleStatsCommand(CommandSender sender) {
+        plugin.getStatistics().sendStatistics(sender);
+        return true;
+    }
+    
+    private boolean handleSearchCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog search <query>"));
+            return true;
+        }
+        
+        String query = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+        List<ChangelogEntry> results = plugin.getSearch().search(query);
+        
+        plugin.getSearch().displayResults(sender, results, query);
+        return true;
+    }
+    
+    private boolean handleHealthCommand(CommandSender sender) {
+        List<String> healthResults = plugin.getHealthChecker().performHealthCheck();
+        for (String result : healthResults) {
+            sender.sendMessage(result);
+        }
+        return true;
+    }
+    
+    private boolean handlePreviewCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(ColorUtil.formatText("&cOnly players can preview entries"));
+            return true;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog preview <id>"));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        plugin.getPreview().previewExisting(player, args[1]);
+        return true;
+    }
+    
+    private boolean handleSuggestCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog suggest <content>"));
+            return true;
+        }
+        
+        String content = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+        String suggestionId = plugin.getSuggestionManager().addSuggestion(sender.getName(), content);
+        
+        sender.sendMessage(ColorUtil.formatText("&aSuggestion submitted! ID: &f" + suggestionId));
+        return true;
+    }
+    
+    private boolean handleSuggestionsCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            List<com.puffmc.changelog.SuggestionManager.Suggestion> pending = 
+                plugin.getSuggestionManager().getSuggestionsByStatus("pending");
+            
+            sender.sendMessage(ColorUtil.formatText("&6Pending Suggestions: &f" + pending.size()));
+            for (com.puffmc.changelog.SuggestionManager.Suggestion suggestion : pending) {
+                sender.sendMessage(ColorUtil.formatText("&7- &f" + suggestion.getId() + " &7by &f" + suggestion.getPlayer()));
+            }
+            return true;
+        }
+        
+        String action = args[1].toLowerCase();
+        if (args.length < 3) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog suggestions <approve|reject> <id>"));
+            return true;
+        }
+        
+        String id = args[2];
+        
+        switch (action) {
+            case "approve":
+                if (plugin.getSuggestionManager().approveSuggestion(id)) {
+                    sender.sendMessage(ColorUtil.formatText("&aApproved suggestion: " + id));
+                } else {
+                    sender.sendMessage(ColorUtil.formatText("&cSuggestion not found"));
+                }
+                break;
+            case "reject":
+                if (plugin.getSuggestionManager().rejectSuggestion(id)) {
+                    sender.sendMessage(ColorUtil.formatText("&cRejected suggestion: " + id));
+                } else {
+                    sender.sendMessage(ColorUtil.formatText("&cSuggestion not found"));
+                }
+                break;
+            default:
+                sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog suggestions <approve|reject> <id>"));
+        }
+        return true;
+    }
+    
+    private boolean handleExportCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog export <json|markdown|yaml|csv>"));
+            return true;
+        }
+        
+        String format = args[1].toLowerCase();
+        java.io.File outputFile = new java.io.File(plugin.getDataFolder(), "export-" + System.currentTimeMillis() + "." + format);
+        
+        boolean success = false;
+        switch (format) {
+            case "json":
+                success = plugin.getExportManager().exportToJson(outputFile);
+                break;
+            case "markdown":
+            case "md":
+                success = plugin.getExportManager().exportToMarkdown(outputFile);
+                break;
+            case "yaml":
+            case "yml":
+                success = plugin.getExportManager().exportToYaml(outputFile);
+                break;
+            case "csv":
+                success = plugin.getExportManager().exportToCsv(outputFile);
+                break;
+            default:
+                sender.sendMessage(ColorUtil.formatText("&cInvalid format. Use: json, markdown, yaml, csv"));
+                return true;
+        }
+        
+        if (success) {
+            sender.sendMessage(ColorUtil.formatText("&aExported to: &f" + outputFile.getName()));
+        } else {
+            sender.sendMessage(ColorUtil.formatText("&cExport failed"));
+        }
+        return true;
+    }
+    
+    private boolean handleImportCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog import <filename>"));
+            return true;
+        }
+        
+        java.io.File inputFile = new java.io.File(plugin.getDataFolder(), args[1]);
+        if (!inputFile.exists()) {
+            sender.sendMessage(ColorUtil.formatText("&cFile not found: " + args[1]));
+            return true;
+        }
+        
+        int imported = plugin.getExportManager().importFromJson(inputFile);
+        sender.sendMessage(ColorUtil.formatText("&aImported &f" + imported + " &aentries"));
+        return true;
+    }
+    
+    private boolean handleBackupCommand(CommandSender sender) {
+        sender.sendMessage(ColorUtil.formatText("&eCreating backup..."));
+        if (plugin.getBackupManager().performBackup(false)) {
+            sender.sendMessage(ColorUtil.formatText("&aBackup created successfully"));
+        } else {
+            sender.sendMessage(ColorUtil.formatText("&cBackup failed"));
+        }
+        return true;
+    }
+    
+    private boolean handleTagCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog tag <add|remove|list> <id> [tag]"));
+            return true;
+        }
+        
+        String action = args[1].toLowerCase();
+        String entryId = args[2];
+        
+        switch (action) {
+            case "add":
+                if (args.length < 4) {
+                    sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog tag add <id> <tag>"));
+                    return true;
+                }
+                plugin.getTagManager().addTag(entryId, args[3]);
+                sender.sendMessage(ColorUtil.formatText("&aTag added"));
+                break;
+            case "remove":
+                if (args.length < 4) {
+                    sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog tag remove <id> <tag>"));
+                    return true;
+                }
+                if (plugin.getTagManager().removeTag(entryId, args[3])) {
+                    sender.sendMessage(ColorUtil.formatText("&aTag removed"));
+                } else {
+                    sender.sendMessage(ColorUtil.formatText("&cTag not found"));
+                }
+                break;
+            case "list":
+                java.util.Set<String> tags = plugin.getTagManager().getTags(entryId);
+                sender.sendMessage(ColorUtil.formatText("&6Tags: &f" + String.join(", ", tags)));
+                break;
+            default:
+                sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog tag <add|remove|list> <id> [tag]"));
+        }
+        return true;
+    }
+    
+    private boolean handleVoteCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog vote <id> <like|dislike>"));
+            return true;
+        }
+        
+        String entryId = args[1];
+        String voteType = args[2].toLowerCase();
+        
+        boolean success = false;
+        switch (voteType) {
+            case "like":
+            case "upvote":
+                success = plugin.getVoteManager().addLike(entryId, sender.getName());
+                break;
+            case "dislike":
+            case "downvote":
+                success = plugin.getVoteManager().addDislike(entryId, sender.getName());
+                break;
+            default:
+                sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog vote <id> <like|dislike>"));
+                return true;
+        }
+        
+        if (success) {
+            sender.sendMessage(ColorUtil.formatText("&aVote recorded"));
+        } else {
+            sender.sendMessage(ColorUtil.formatText("&cYou already voted"));
+        }
+        return true;
+    }
+    
+    private boolean handleMilestoneCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog milestone <create|list|add|release> [args]"));
+            return true;
+        }
+        
+        String action = args[1].toLowerCase();
+        
+        switch (action) {
+            case "create":
+                if (args.length < 4) {
+                    sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog milestone create <version> <name>"));
+                    return true;
+                }
+                String id = plugin.getVersionMilestone().createMilestone(args[2], args[3], "");
+                sender.sendMessage(ColorUtil.formatText("&aMilestone created: " + id));
+                break;
+            case "list":
+                for (com.puffmc.changelog.VersionMilestone.Milestone milestone : plugin.getVersionMilestone().getAllMilestones()) {
+                    sender.sendMessage(ColorUtil.formatText("&7- &f" + milestone.getVersion() + " &7(" + milestone.getEntries().size() + " entries)"));
+                }
+                break;
+            default:
+                sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog milestone <create|list|add|release> [args]"));
+        }
+        return true;
+    }
+    
+    private boolean handleImpactCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog impact <id> <CRITICAL|HIGH|MEDIUM|LOW|MINOR>"));
+            return true;
+        }
+        
+        String entryId = args[1];
+        String level = args[2].toUpperCase();
+        
+        plugin.getImpactLevel().setImpact(entryId, level, "Set by " + sender.getName());
+        sender.sendMessage(ColorUtil.formatText("&aImpact level set to: " + level));
+        return true;
+    }
+    
+    private boolean handleScheduleCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(ColorUtil.formatText("&cUsage: /changelog schedule <delay-minutes> <content>"));
+            return true;
+        }
+        
+        try {
+            int delayMinutes = Integer.parseInt(args[1]);
+            long publishTime = System.currentTimeMillis() + (delayMinutes * 60 * 1000L);
+            String content = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+            
+            String scheduleId = plugin.getScheduledChangelog().scheduleEntry(
+                content, 
+                sender.getName(), 
+                null, 
+                publishTime, 
+                null
+            );
+            
+            sender.sendMessage(ColorUtil.formatText("&aScheduled entry: " + scheduleId));
+        } catch (NumberFormatException e) {
+            sender.sendMessage(ColorUtil.formatText("&cInvalid delay time"));
+        }
+        return true;
+    }
+    
+    private boolean handleAnalyticsCommand(CommandSender sender) {
+        java.util.Map<String, Object> summary = plugin.getAnalyticsTracker().getSummary();
+        
+        sender.sendMessage(ColorUtil.formatText("&6&lAnalytics Summary"));
+        sender.sendMessage(ColorUtil.formatText("&7Total Views: &f" + summary.get("total_views")));
+        sender.sendMessage(ColorUtil.formatText("&7Total Creations: &f" + summary.get("total_creations")));
+        sender.sendMessage(ColorUtil.formatText("&7Most Used Command: &f" + summary.get("most_used_command")));
+        sender.sendMessage(ColorUtil.formatText("&7Most Used Category: &f" + summary.get("most_used_category")));
+        return true;
     }
 }

@@ -1,29 +1,92 @@
 # ChangelogBook
 
-A Minecraft plugin for Paper 1.21.3 that allows server administrators to manage and display changelogs in-game using a custom book GUI.
+A Minecraft plugin for Paper 1.21+ that allows server administrators to manage and display changelogs in-game using a custom book GUI.
+
+**Version 2.0** - Major security update with enhanced features and improved usability.
+
+## What's New in 2.0
+
+**User Experience**
+- Short numeric IDs (1, 2, 3) instead of long UUIDs for better readability
+- Custom ID support for memorable entry names
+- Automatic database migration from UUID-based system
+- Content validation with 5000 character limit
+
+**Security Improvements**
+- Fixed critical command injection vulnerability in reward system
+- Path traversal protection for export/import operations
+- SSRF prevention with Discord webhook URL validation
+- Thread-safe concurrent player operations (ConcurrentHashMap)
+- HTTP timeout protection (5s connect, 10s read)
+- Discord webhook rate limiting (25 requests per 60 seconds)
+- File size limits (10 MB max, 10,000 entries max)
+- Enhanced error logging with proper exception handling
+
+**Technical Enhancements**
+- Database schema extended to VARCHAR(100) for flexible IDs
+- Full backward compatibility with existing UUID entries
+- Comprehensive input validation across all features
+- Improved resource management and async operations
 
 ## Features
 
-- 📖 **Interactive Book GUI** - Players view changelogs in a beautifully formatted in-game book
-- 🔢 **Sequential Numbering** - Entries are displayed with easy-to-read numbers (#1, #2, #3)
-- 🗄️ **MySQL Support** - Store all changelog entries in a MySQL database
-- 🌍 **Multi-Language** - Built-in support for English and Polish
-- 🎁 **Reward System** - Incentivize players to read updates with customizable rewards
-- 📢 **Join Notifications** - Alert players about new changelog entries when they join
-- ⚡ **Admin Commands** - Easy-to-use commands for managing changelog entries
-- 🔄 **Hot Reload** - Reload configuration without restarting the server
+- **Interactive Book GUI** - Players view changelogs in a beautifully formatted in-game book
+- **Sequential Numbering** - Entries are displayed with easy-to-read numbers (#1, #2, #3)
+- **Smart ID System** - Automatic numeric IDs or custom readable IDs (your choice)
+- **MySQL Support** - Store all changelog entries in a MySQL database with connection pooling
+- **Multi-Server Sync** - Synchronize changelogs across multiple servers via MySQL
+- **Multi-Language** - Built-in support for English and Polish
+- **Advanced Reward System** - Multiple commands per reward tier with cooldowns
+- **Join Notifications** - Alert players about new changelog entries when they join
+- **Discord Integration** - Webhook support with rate limiting and validation
+- **Admin Commands** - Easy-to-use commands for managing changelog entries
+- **Hot Reload** - Reload configuration without restarting the server
+- **Export/Import** - JSON, Markdown, YAML, and CSV format support
 
 ## Commands
 
 | Command | Description | Permission |
 |---------|-------------|------------|
 | `/changelog` | Display changelog help | `changelogbook.use` |
-| `/changelog add <content>` | Add a new changelog entry | `changelogbook.admin` |
+| `/changelog add [custom-id] [category] <content>` | Add a new changelog entry | `changelogbook.admin` |
 | `/changelog edit <id> <content>` | Edit an existing entry | `changelogbook.admin` |
 | `/changelog delete <id>` | Delete a changelog entry | `changelogbook.admin` |
 | `/changelog list` | List all entries with IDs | `changelogbook.admin` |
 | `/changelog reload` | Reload the configuration | `changelogbook.admin` |
 | `/changelog debug <on\|off>` | Toggle debug mode | `changelogbook.admin` |
+| `/changelog info` | Show plugin information | `changelogbook.admin` |
+
+### ID System
+
+ChangelogBook 2.0 uses a smart ID system with two options:
+
+**Automatic Numeric IDs** (default)
+```bash
+/changelog add fixed This fixes a critical bug
+# Automatically assigned ID: 1, 2, 3, etc.
+```
+
+**Custom IDs** (optional)
+```bash
+/changelog add bug-fix-2024 fixed This fixes a critical bug
+/changelog edit bug-fix-2024 Updated fix description
+```
+
+**Custom ID Requirements:**
+- 1-100 characters long
+- Alphanumeric characters, hyphens, and underscores only
+- Must be unique
+- Pure numeric IDs (e.g., "123") are reserved for automatic assignment
+- UUID format is blocked
+
+**Examples of valid custom IDs:**
+- `update-1.2.0`
+- `bug-fix-login`
+- `feature_new_gui`
+- `hotfix-2024-04`
+
+**Migration from 1.x:**
+All existing UUID-based entries remain accessible. New entries use numeric IDs automatically.
 
 ## Color Formatting Support
 
@@ -127,6 +190,16 @@ Custom hex colors using the format `&#RRGGBB`:
 4. Configure the plugin in `plugins/ChangelogBook/config.yml`
 5. (Optional) Set up MySQL database connection
 
+### Upgrading from 1.x to 2.0
+
+1. Backup your database/data files before updating
+2. Stop your server
+3. Replace the old plugin JAR with ChangelogBook-2.0.jar
+4. Start your server (database migration runs automatically)
+5. Check console for "Database schema updated successfully" message
+
+No configuration changes required. All settings remain compatible.
+
 ## Configuration
 
 ```yaml
@@ -180,18 +253,51 @@ The plugin supports both YAML and MySQL storage:
 ### MySQL Tables
 
 The plugin automatically creates the following tables:
-- `changelog_entries` - Stores all changelog entries
+- `changelog_entries` - Stores all changelog entries (ID: VARCHAR(100), supports numeric and custom IDs)
 - `changelog_last_seen` - Tracks when players last viewed the changelog
+
+**Connection Pooling:**
+- HikariCP for efficient database connections
+- Configurable pool size (default: 10 max, 2 idle)
+- Automatic connection timeout handling
 
 ## Reward System
 
 Players can receive rewards for reading new changelog entries:
 
 - Multiple reward tiers (bronze, silver, gold)
+- Multiple commands per reward (execute several commands at once)
 - Customizable chance percentages
-- Cooldown system to prevent spam
+- Cooldown system to prevent spam (cache-based with automatic expiration)
 - Age limit for eligible entries
-- Execute any command as reward
+- Supports all server commands with %player% placeholder
+- Security: Player name validation to prevent command injection
+
+### Example Reward Configuration
+
+```yaml
+rewards:
+  types:
+    gold:
+      enabled: true
+      chance: 5
+      cooldown-hours: 12
+      commands:
+        - "give %player% diamond 10"
+        - "bc &6%player% &ereceived gold reward!"
+        - "eco give %player% 1000"
+```
+
+## Multi-Server Synchronization
+
+When MySQL is enabled, you can synchronize changelogs across multiple servers:
+
+1. Enable MySQL in `config.yml`
+2. Set `mysql.sync: true`
+3. Use the same database and table-prefix on all servers
+4. All servers will share the same changelog entries
+
+Perfect for networks with lobby, smp, creative servers, etc.
 
 ## Language Support
 
@@ -203,10 +309,10 @@ All messages are fully customizable through these files.
 
 ## Requirements
 
-- **Minecraft Version**: 1.21.3
-- **Server Software**: Paper (or compatible forks)
-- **Java Version**: 17 or higher
-- **Optional**: MySQL 5.7+ or MariaDB 10.2+
+- **Minecraft Version**: 1.21.3+ (Paper, Spigot, Purpur)
+- **Java Version**: 21 (required)
+- **Database**: MySQL 8.0+ or MariaDB 10.2+ (optional, YAML available)
+- **Dependencies**: PlaceholderAPI 2.11.6 (optional)
 
 ## Building from Source
 
@@ -217,6 +323,19 @@ cd ChangelogBook
 ```
 
 The compiled jar will be in `app/build/libs/changelogbook.jar`
+
+## Security
+
+Version 2.0 addresses all known security vulnerabilities:
+
+- **Command Injection**: Player names are validated before executing reward commands
+- **Path Traversal**: Export/import operations validate file paths within plugin directory
+- **SSRF**: Discord webhook URLs restricted to official Discord domains only
+- **DoS Protection**: File size limits (10 MB), entry count limits (10,000 max)
+- **Thread Safety**: ConcurrentHashMap prevents race conditions
+- **Resource Management**: Proper timeout handling and connection cleanup
+
+For security issues, please report privately through GitHub Security Advisories.
 
 ## Support
 
