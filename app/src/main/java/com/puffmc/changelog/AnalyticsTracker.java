@@ -7,6 +7,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Tracks analytics about plugin usage
@@ -17,15 +19,17 @@ public class AnalyticsTracker {
     private FileConfiguration analytics;
     private final Map<String, Long> commandUsage;
     private final Map<String, Long> categoryUsage;
-    private long totalViews;
-    private long totalCreations;
+    private final AtomicLong totalViews;
+    private final AtomicLong totalCreations;
     private BukkitRunnable saveTask;
 
     public AnalyticsTracker(ChangelogPlugin plugin) {
         this.plugin = plugin;
         this.analyticsFile = new File(plugin.getDataFolder(), "analytics.yml");
-        this.commandUsage = new HashMap<>();
-        this.categoryUsage = new HashMap<>();
+        this.commandUsage = new ConcurrentHashMap<>();
+        this.categoryUsage = new ConcurrentHashMap<>();
+        this.totalViews = new AtomicLong(0);
+        this.totalCreations = new AtomicLong(0);
         loadAnalytics();
     }
 
@@ -44,8 +48,8 @@ public class AnalyticsTracker {
 
         analytics = YamlConfiguration.loadConfiguration(analyticsFile);
 
-        totalViews = analytics.getLong("totals.views", 0);
-        totalCreations = analytics.getLong("totals.creations", 0);
+        totalViews.set(analytics.getLong("totals.views", 0));
+        totalCreations.set(analytics.getLong("totals.creations", 0));
 
         if (analytics.contains("commands")) {
             for (String cmd : analytics.getConfigurationSection("commands").getKeys(false)) {
@@ -64,8 +68,8 @@ public class AnalyticsTracker {
      * Saves analytics to file
      */
     private void saveAnalytics() {
-        analytics.set("totals.views", totalViews);
-        analytics.set("totals.creations", totalCreations);
+        analytics.set("totals.views", totalViews.get());
+        analytics.set("totals.creations", totalCreations.get());
 
         for (Map.Entry<String, Long> entry : commandUsage.entrySet()) {
             analytics.set("commands." + entry.getKey(), entry.getValue());
@@ -87,14 +91,14 @@ public class AnalyticsTracker {
      * @param command Command name
      */
     public void trackCommand(String command) {
-        commandUsage.put(command, commandUsage.getOrDefault(command, 0L) + 1);
+        commandUsage.merge(command, 1L, Long::sum);
     }
 
     /**
      * Tracks a changelog view
      */
     public void trackView() {
-        totalViews++;
+        totalViews.incrementAndGet();
     }
 
     /**
@@ -102,9 +106,9 @@ public class AnalyticsTracker {
      * @param category Category
      */
     public void trackCreation(String category) {
-        totalCreations++;
+        totalCreations.incrementAndGet();
         if (category != null && !category.isEmpty()) {
-            categoryUsage.put(category, categoryUsage.getOrDefault(category, 0L) + 1);
+            categoryUsage.merge(category, 1L, Long::sum);
         }
     }
 
@@ -113,7 +117,7 @@ public class AnalyticsTracker {
      * @return Total views
      */
     public long getTotalViews() {
-        return totalViews;
+        return totalViews.get();
     }
 
     /**
@@ -121,7 +125,7 @@ public class AnalyticsTracker {
      * @return Total creations
      */
     public long getTotalCreations() {
-        return totalCreations;
+        return totalCreations.get();
     }
 
     /**
@@ -170,6 +174,11 @@ public class AnalyticsTracker {
             return;
         }
 
+        // Cancel existing task to prevent leak on reload
+        if (saveTask != null && !saveTask.isCancelled()) {
+            saveTask.cancel();
+        }
+
         int interval = plugin.getConfig().getInt("analytics.save-interval", 300);
 
         saveTask = new BukkitRunnable() {
@@ -198,8 +207,8 @@ public class AnalyticsTracker {
      * Resets all analytics
      */
     public void resetAnalytics() {
-        totalViews = 0;
-        totalCreations = 0;
+        totalViews.set(0);
+        totalCreations.set(0);
         commandUsage.clear();
         categoryUsage.clear();
         saveAnalytics();

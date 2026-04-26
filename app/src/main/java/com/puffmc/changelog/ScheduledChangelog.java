@@ -22,7 +22,7 @@ public class ScheduledChangelog {
     public ScheduledChangelog(ChangelogPlugin plugin) {
         this.plugin = plugin;
         this.scheduledFile = new File(plugin.getDataFolder(), "scheduled.yml");
-        this.scheduledEntries = new HashMap<>();
+        this.scheduledEntries = new java.util.concurrent.ConcurrentHashMap<>();
         loadScheduled();
     }
     

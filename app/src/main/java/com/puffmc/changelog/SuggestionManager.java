@@ -100,10 +100,16 @@ public class SuggestionManager {
     public String addSuggestion(String player, String content) {
         String id = getNextSuggestionId();
         Suggestion suggestion = new Suggestion(id, player, content, System.currentTimeMillis(), "pending");
-        
+
         activeSuggestions.put(id, suggestion);
         saveSuggestions();
-        
+
+        // Send Discord notification if configured
+        DiscordWebhook webhook = plugin.getDiscordWebhook();
+        if (webhook != null && webhook.isEnabled()) {
+            webhook.sendSuggestionNotification(id, player, content);
+        }
+
         plugin.debug("New suggestion added: " + id + " by " + player);
         return id;
     }

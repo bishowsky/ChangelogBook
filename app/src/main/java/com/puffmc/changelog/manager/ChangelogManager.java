@@ -20,7 +20,7 @@ public class ChangelogManager {
     private final DatabaseManager databaseManager;
     private MessageManager messageManager;
     // ✅ FIX #10: Cache for display numbers to avoid O(n log n) on every call
-    private final Map<String, String> displayNumberCache = new HashMap<>();
+    private final Map<String, String> displayNumberCache = new ConcurrentHashMap<>();
     private int nextNumericId = 1; // Counter for generating short numeric IDs
     
     // Content validation constants
@@ -457,16 +457,19 @@ public class ChangelogManager {
     public String getEntryDisplayNumber(ChangelogEntry entry) {
         // ✅ FIX #10: Use cache to avoid O(n log n) sorting on every call
         return displayNumberCache.computeIfAbsent(entry.getId(), id -> {
-            List<ChangelogEntry> activeEntries = entries.stream()
-                    .filter(e -> !e.isDeleted())
-                    .sorted((e1, e2) -> Long.compare(e1.getTimestamp(), e2.getTimestamp()))
-                    .toList();
-            
-            int index = activeEntries.indexOf(entry);
-            if (index >= 0) {
-                return "#" + (index + 1);
+            synchronized (ChangelogManager.this) {
+                List<ChangelogEntry> activeEntries = entries.stream()
+                        .filter(e -> !e.isDeleted())
+                        .sorted((e1, e2) -> Long.compare(e1.getTimestamp(), e2.getTimestamp()))
+                        .toList();
+
+                for (int i = 0; i < activeEntries.size(); i++) {
+                    if (activeEntries.get(i).getId().equals(id)) {
+                        return "#" + (i + 1);
+                    }
+                }
+                return "#?";
             }
-            return "#?";
         });
     }
 
@@ -601,8 +604,6 @@ public class ChangelogManager {
         if (!databaseManager.isUsingMySQL()) {
             saveToYaml(true); // Synchronous save during shutdown
         }
-        if (databaseManager != null) {
-            databaseManager.disconnect();
-        }
+        databaseManager.disconnect();
     }
 }

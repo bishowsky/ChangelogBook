@@ -6,16 +6,29 @@
 
 embed:
   # Title shown at the top of the embed
-  title: "📋 New Changelog Entry"
+  title: "New Changelog Entry"
 
   # Name of the "Author" inline field
-  author-field: "👤 Author"
+  author-field: "Author"
 
   # Name of the "Date" inline field
-  date-field: "📅 Date"
+  date-field: "Date"
 
   # Footer text at the bottom of the embed
   footer: "ChangelogBook • Server Update"
+
+  # ── Suggestion embed ──────────────────────────────
+  # Title shown at the top of the suggestion embed
+  suggestion-title: "New Player Suggestion"
+
+  # Name of the "Player" inline field
+  suggestion-player-field: "Player"
+
+  # Name of the "Suggestion ID" inline field
+  suggestion-id-field: "Suggestion ID"
+
+  # Footer text for suggestion embeds
+  suggestion-footer: "ChangelogBook • Player Suggestion"
 
 # =====================================
 # Category Colors
@@ -30,3 +43,9 @@ category-colors:
   removed: "ED4245"   # Red
   changed: "5865F2"   # Blurple
   default: "5865F2"   # Blurple (fallback)
+
+# =====================================
+# Suggestion Embed Color
+# =====================================
+# Hex color for suggestion embeds (6 digits, no '#').
+suggestion-color: "3498DB"  # Blue

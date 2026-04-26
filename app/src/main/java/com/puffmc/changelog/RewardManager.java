@@ -30,7 +30,8 @@ public class RewardManager {
      */
     public void setDatabaseManager(DatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
-        loadCooldowns();
+        // loadCooldowns() is NOT called here — it must be called explicitly
+        // after databaseManager.connect() completes (see ChangelogPlugin.onEnable)
     }
     
     /**

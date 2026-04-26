@@ -1,5 +1,8 @@
 # ChangelogBook Configuration
 
+# Config version - used internally for auto-migration, do not change manually.
+config-version: 2
+
 # Server name displayed in /changelog info command
 server-name: "My Server"
 
@@ -156,6 +159,8 @@ discord:
   webhook-url: "https://discord.com/api/webhooks/..."
   # Notify when new changelog entry is added
   notify-on-add: true
+  # Notify when a player submits a new suggestion
+  notify-on-suggestion: true
   # Mention a role when posting (e.g., "@everyone", "@here", "<@&ROLE_ID>", or "none")
   mention-role: "none"
 
@@ -239,6 +244,13 @@ notifications:
     text: "&6New Changelog Entry"
     color: "BLUE"
     duration: 10
+  # Sound played when notifying players about a new changelog entry
+  sound:
+    enabled: false
+    # Valid sound names: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html
+    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.0
 
 # Debug mode - set to true for verbose logging
 debug: false

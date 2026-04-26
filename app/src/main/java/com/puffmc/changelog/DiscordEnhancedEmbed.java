@@ -85,7 +85,8 @@ public class DiscordEnhancedEmbed {
             ChangelogEntry entry = entries.get(i);
             String icon = getCategoryIcon(entry.getCategory());
             String content = truncate(stripColors(entry.getContent()), 50);
-            description.append(icon).append(" **").append(entry.getCategory()).append("** - ")
+            String cat = entry.getCategory() != null ? entry.getCategory() : "General";
+            description.append(icon).append(" **").append(cat).append("** - ")
                        .append(content).append("\n");
         }
 

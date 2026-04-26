@@ -72,6 +72,7 @@ errors:
   content_too_short: "&cWpis w dzienniku zmian jest za krótki! Minimalnie: &e%min% &cznaków, twój: &e%current%"
   content_too_long: "&cWpis w dzienniku zmian jest za długi! Maksymalnie: &e%max% &cznaków, twój: &e%current%"
   database_save_failed: "&cNie udało się zapisać wpisu do bazy danych. Skontaktuj się z administratorem."
+  book_create_failed: "&cNie udało się stworzyć książki. Spróbuj ponownie."
 
 update:
   available: "&6Dostępna nowa wersja: &e%new_version% &7(Obecna: %current_version%)"

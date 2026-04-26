@@ -3,6 +3,7 @@ package com.puffmc.changelog;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -136,6 +137,29 @@ public class NotificationManager {
                         .replace("%id%", entryId);
                 sendActionBar(player, actionbarText);
                 break;
+        }
+
+        playNotificationSound(player);
+    }
+
+    /**
+     * Plays a notification sound to a player if enabled in config
+     * @param player Player to play sound for
+     */
+    private void playNotificationSound(Player player) {
+        if (!plugin.getConfig().getBoolean("notifications.sound.enabled", false)) {
+            return;
+        }
+
+        String soundName = plugin.getConfig().getString("notifications.sound.name", "ENTITY_EXPERIENCE_ORB_PICKUP");
+        float volume = (float) plugin.getConfig().getDouble("notifications.sound.volume", 1.0);
+        float pitch = (float) plugin.getConfig().getDouble("notifications.sound.pitch", 1.0);
+
+        try {
+            Sound sound = Sound.valueOf(soundName.toUpperCase());
+            player.playSound(player.getLocation(), sound, volume, pitch);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid sound name in notifications.sound.name: '" + soundName + "'. See https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html for valid values.");
         }
     }
 

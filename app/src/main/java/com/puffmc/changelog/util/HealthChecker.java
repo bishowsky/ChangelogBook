@@ -4,8 +4,6 @@ import com.puffmc.changelog.ChangelogPlugin;
 import com.puffmc.changelog.DatabaseManager;
 import org.bukkit.ChatColor;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,21 +51,15 @@ public class HealthChecker {
 
     private String checkDatabase() {
         DatabaseManager dbManager = plugin.getDatabaseManager();
-        
+
         if (!dbManager.isUsingMySQL()) {
             return formatStatus("Database", "YAML", ChatColor.YELLOW);
         }
 
-        try (Connection conn = dbManager.getClass().getDeclaredMethod("getConnection").invoke(dbManager) != null ? 
-                (Connection) dbManager.getClass().getDeclaredMethod("getConnection").invoke(dbManager) : null) {
-            
-            if (conn != null && !conn.isClosed()) {
-                return formatStatus("Database", "MySQL Connected", ChatColor.GREEN);
-            } else {
-                return formatStatus("Database", "MySQL Disconnected", ChatColor.RED);
-            }
-        } catch (Exception e) {
-            return formatStatus("Database", "Connection Error", ChatColor.RED);
+        if (dbManager.testConnection()) {
+            return formatStatus("Database", "MySQL Connected", ChatColor.GREEN);
+        } else {
+            return formatStatus("Database", "MySQL Disconnected", ChatColor.RED);
         }
     }
 

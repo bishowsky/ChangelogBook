@@ -326,6 +326,95 @@ public class DiscordWebhook {
     }
 
     /**
+     * Sends a player suggestion notification to Discord
+     * @param suggestionId Numeric suggestion ID
+     * @param player Player name
+     * @param content Suggestion content
+     */
+    public void sendSuggestionNotification(String suggestionId, String player, String content) {
+        if (!isEnabled() || !isNotifyOnSuggestion()) {
+            return;
+        }
+
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                if (!checkRateLimit()) {
+                    plugin.getLogger().warning("Discord webhook rate limit reached. Skipping suggestion notification for #" + suggestionId);
+                    return;
+                }
+
+                JsonObject payload = buildSuggestionEmbed(suggestionId, player, content);
+                sendWebhook(payload);
+                plugin.debug("Discord suggestion notification sent for #" + suggestionId);
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to send Discord suggestion webhook", e);
+            }
+        });
+    }
+
+    private boolean isNotifyOnSuggestion() {
+        return plugin.getConfig().getBoolean("discord.notify-on-suggestion", true);
+    }
+
+    /**
+     * Builds a Discord embed for a player suggestion
+     */
+    private JsonObject buildSuggestionEmbed(String suggestionId, String player, String content) {
+        JsonObject payload = new JsonObject();
+
+        String mentionRole = getMentionRole();
+        if (mentionRole != null && !mentionRole.isEmpty() && !mentionRole.equals("none")) {
+            payload.addProperty("content", mentionRole);
+        }
+
+        JsonObject embed = new JsonObject();
+
+        String title = plugin.getDiscordConfig().getString("embed.suggestion-title", "💡 New Player Suggestion");
+        embed.addProperty("title", title);
+        embed.addProperty("description", content);
+
+        String colorHex = plugin.getDiscordConfig().getString("suggestion-color", "3498DB");
+        int color = 0x3498DB;
+        try {
+            color = Integer.parseInt(colorHex, 16);
+        } catch (NumberFormatException ignored) {}
+        embed.addProperty("color", color);
+
+        JsonArray fields = new JsonArray();
+
+        String playerFieldName = plugin.getDiscordConfig().getString("embed.suggestion-player-field", "👤 Player");
+        JsonObject playerField = new JsonObject();
+        playerField.addProperty("name", playerFieldName);
+        playerField.addProperty("value", player);
+        playerField.addProperty("inline", true);
+        fields.add(playerField);
+
+        String idFieldName = plugin.getDiscordConfig().getString("embed.suggestion-id-field", "🔢 Suggestion ID");
+        JsonObject idField = new JsonObject();
+        idField.addProperty("name", idFieldName);
+        idField.addProperty("value", "#" + suggestionId);
+        idField.addProperty("inline", true);
+        fields.add(idField);
+
+        embed.add("fields", fields);
+
+        String footerText = plugin.getDiscordConfig().getString("embed.suggestion-footer", "ChangelogBook • Player Suggestion");
+        JsonObject footer = new JsonObject();
+        footer.addProperty("text", footerText);
+        embed.add("footer", footer);
+
+        SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        isoFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        embed.addProperty("timestamp", isoFormat.format(new Date()));
+
+        JsonArray embeds = new JsonArray();
+        embeds.add(embed);
+        payload.add("embeds", embeds);
+
+        return payload;
+    }
+
+    /**
      * Formats timestamp for Discord
      */
     private String formatTimestamp(long timestamp) {

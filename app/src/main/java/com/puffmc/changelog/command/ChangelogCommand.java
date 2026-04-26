@@ -746,7 +746,12 @@ public class ChangelogCommand implements CommandExecutor {
         
         ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta meta = (BookMeta) book.getItemMeta();
-        
+
+        if (meta == null) {
+            player.sendMessage(messageManager.getMessage("errors.book_create_failed"));
+            return;
+        }
+
         meta.setTitle(ChatColor.GOLD + messageManager.getMessage("book.title"));
         meta.setAuthor(messageManager.getMessage("book.author"));
         

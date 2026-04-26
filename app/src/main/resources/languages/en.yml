@@ -72,6 +72,7 @@ errors:
   content_too_short: "&cChangelog entry is too short! Minimum: &e%min% &ccharacters, yours: &e%current%"
   content_too_long: "&cChangelog entry is too long! Maximum: &e%max% &ccharacters, yours: &e%current%"
   database_save_failed: "&cFailed to save changelog entry to database. Please contact an administrator."
+  book_create_failed: "&cFailed to create changelog book. Please try again."
 
 update:
   available: "&6New version available: &e%new_version% &7(Current: %current_version%)"

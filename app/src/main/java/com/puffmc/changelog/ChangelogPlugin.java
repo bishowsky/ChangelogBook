@@ -6,6 +6,7 @@ import com.puffmc.changelog.command.ChangelogTabCompleter;
 import com.puffmc.changelog.listener.PlayerJoinListener;
 import com.puffmc.changelog.manager.ChangelogManager;
 import com.puffmc.changelog.util.CategoryDetector;
+import com.puffmc.changelog.util.ConfigMigrator;
 import com.puffmc.changelog.util.HealthChecker;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -19,7 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
 public class ChangelogPlugin extends JavaPlugin {
-    private File configFile;
     private File dataFile;
     private FileConfiguration dataConfig;
     private ChangelogManager changelogManager;
@@ -58,6 +58,7 @@ public class ChangelogPlugin extends JavaPlugin {
     public void onEnable() {
         // Create config and data files
         saveDefaultConfig();
+        new ConfigMigrator(this).migrate();
         setupDataFile();
         setupDiscordConfig();
         
@@ -89,7 +90,10 @@ public class ChangelogPlugin extends JavaPlugin {
                     getLogger().warning("Failed to connect to database, falling back to YAML storage");
                     logManager.warning("Failed to connect to MySQL database, using YAML storage");
                     // Fall back to YAML on the main thread
-                    getServer().getScheduler().runTask(this, () -> changelogManager.loadData());
+                    getServer().getScheduler().runTask(this, () -> {
+                        changelogManager.loadData();
+                        rewardManager.loadCooldowns();
+                    });
                 } else {
                     logManager.info("Successfully connected to MySQL database");
                     // Load data from database after successful connection
@@ -101,6 +105,7 @@ public class ChangelogPlugin extends JavaPlugin {
             // YAML mode — connect (no-op) then load immediately
             databaseManager.connect();
             changelogManager.loadData();
+            rewardManager.loadCooldowns();
         }
         
         // Initialize UpdateChecker
@@ -133,6 +138,9 @@ public class ChangelogPlugin extends JavaPlugin {
         analyticsTracker = new AnalyticsTracker(this);
         rssFeedGenerator = new RssFeedGenerator(this, changelogManager);
         discordEnhancedEmbed = new DiscordEnhancedEmbed(this);
+
+        // Wire TagManager into ChangelogSearch so tag: filter works
+        search.setTagManager(tagManager);
         
         // Initialize Public API
         ChangelogAPI.initialize(this, changelogManager);
@@ -233,10 +241,8 @@ public class ChangelogPlugin extends JavaPlugin {
         if (changelogManager != null) {
             changelogManager.shutdown();
         }
-        if (databaseManager != null) {
-            databaseManager.disconnect();
-        }
-        
+        // Note: databaseManager.disconnect() is already called inside changelogManager.shutdown()
+
         if (logManager != null) {
             logManager.info("ChangelogBook disabled successfully");
         }

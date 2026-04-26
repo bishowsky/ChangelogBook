@@ -482,6 +482,21 @@ public class DatabaseManager {
     public boolean isUsingMySQL() {
         return useMySQL;
     }
+
+    /**
+     * Tests if the database connection is alive
+     * @return true if connected and responsive
+     */
+    public boolean testConnection() {
+        if (!useMySQL || dataSource == null) {
+            return false;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            return conn != null && !conn.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
     
     /**
      * ✅ FIX #3: Garbage collection for soft-deleted entries (Critical)

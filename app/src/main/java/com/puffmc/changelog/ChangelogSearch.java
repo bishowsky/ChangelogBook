@@ -13,9 +13,14 @@ import java.util.stream.Collectors;
  */
 public class ChangelogSearch {
     private final ChangelogManager changelogManager;
+    private TagManager tagManager;
 
     public ChangelogSearch(ChangelogManager changelogManager) {
         this.changelogManager = changelogManager;
+    }
+
+    public void setTagManager(TagManager tagManager) {
+        this.tagManager = tagManager;
     }
 
     /**
@@ -85,8 +90,14 @@ public class ChangelogSearch {
                             break;
 
                         case "tag":
-                            // Tags will be implemented later
-                            results = new ArrayList<>();
+                            // Filter by tag using TagManager if available
+                            if (tagManager != null) {
+                                final String tagValue = filterValue;
+                                results = results.stream()
+                                        .filter(e -> tagManager.hasTag(e.getId(), tagValue))
+                                        .collect(Collectors.toList());
+                            }
+                            // If TagManager not injected, leave results unchanged
                             break;
                     }
                 }
